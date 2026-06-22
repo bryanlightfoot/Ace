@@ -305,13 +305,25 @@
     border-radius:8px;padding:10px 12px;margin-top:10px;line-height:1.45}
 
   /* ---------- gallery ---------- */
+  .gsection{margin-bottom:26px}
+  .gsection-title{display:flex;align-items:baseline;gap:10px;font-family:"Bodoni Moda",serif;font-weight:700;
+    font-size:19px;color:var(--paper-on-pine);margin:0 0 12px;border-bottom:1px solid var(--pine-line);padding-bottom:8px}
+  .gsection-title .gcount{font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--mut-on-pine);font-weight:500}
   .ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
-  .gcard{position:relative;margin:0;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid var(--pine-line);box-shadow:var(--shadow)}
+  .gcard{position:relative;margin:0;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid var(--pine-line);box-shadow:var(--shadow);transition:transform .15s ease}
+  .gcard:hover{transform:translateY(-2px)}
   .gcard img{display:block;width:100%;height:200px;object-fit:cover}
-  .gcard figcaption{padding:9px 12px;font-size:13px;color:var(--paper-on-pine)}
   .gcard .gdel{position:absolute;top:8px;right:8px;width:28px;height:28px;border:0;border-radius:50%;
     background:rgba(20,39,28,.72);color:#fff;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .gcard .gdel:hover{background:var(--flag)}
+
+  /* ---------- lightbox ---------- */
+  .lightbox{position:fixed;inset:0;background:rgba(8,16,11,.88);display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
+  .lightbox.on{display:flex}
+  .lb-inner{max-width:min(1100px,94vw);max-height:90vh;display:flex;flex-direction:column;gap:12px;align-items:center}
+  .lb-inner img{max-width:100%;max-height:80vh;border-radius:10px;box-shadow:var(--shadow);object-fit:contain}
+  .lb-bar{display:flex;gap:10px}
 </style>
 
 <div class="wrap">
@@ -525,6 +537,29 @@
   </div>
 </div>
 
+<div class="scrim" id="galleryScrim">
+  <div class="modal">
+    <h3>Add a photo</h3>
+    <p class="sub">Choose which trip this photo belongs to.</p>
+    <div id="gl_prev" style="margin:0 0 14px;border-radius:10px;overflow:hidden;background:rgba(46,74,56,.06);border:1px solid var(--rule)"></div>
+    <div class="field"><label class="f">Trip</label><select id="gl_trip"></select></div>
+    <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn ghost" onclick="closeModal('galleryScrim')">Cancel</button>
+      <button class="btn" onclick="confirmGalleryUpload()">Add photo</button>
+    </div></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <div class="lb-inner" onclick="event.stopPropagation()">
+    <img id="lb_img" src="" alt="Gallery photo">
+    <div class="lb-bar">
+      <a id="lb_open" href="#" target="_blank" rel="noopener" class="btn ghost tiny">Open full size &#8599;</a>
+      <button class="btn ghost tiny" onclick="closeLightbox()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -546,6 +581,11 @@ const sb = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON
 
 /* ---- Group PIN required to create an account ---- */
 const JOIN_PIN = "0001";
+
+/* ---- Gallery trips: the dropdown choices when adding a photo.
+   Edit this list to add/rename trips. (Later these could be
+   pulled automatically from the Destinations tab.) ---- */
+const GALLERY_TRIPS = ["Myrtle Beach - 2024", "St. George - 2025", "Bend - 2026"];
 
 /* ---- state (same shapes the render layer already expects) ---- */
 let TRIPS = [], DESTS = [], VOTES = {}, MINE = {}, MEMBERS = [], GALLERY = [];
@@ -1292,12 +1332,20 @@ function readGalleryFile(input){
       const c=document.createElement('canvas'); c.width=w; c.height=h;
       c.getContext('2d').drawImage(img,0,0,w,h);
       pendingGallery = c.toDataURL('image/jpeg',0.85);
-      saveGalleryPhoto();
+      openGalleryUpload();
     };
     img.src = e.target.result;
   };
   r.readAsDataURL(f);
   input.value = "";
+}
+function openGalleryUpload(){
+  if(!isAuthed()){ openAuth('signin'); return; }
+  const sel=$("#gl_trip");
+  if(sel) sel.innerHTML = GALLERY_TRIPS.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  const prev=$("#gl_prev");
+  if(prev) prev.innerHTML = pendingGallery ? `<img src="${pendingGallery}" alt="" style="display:block;width:100%;max-height:260px;object-fit:cover">` : '';
+  openModal('galleryScrim');
 }
 async function uploadGalleryImage(dataUrl, uid){
   try{
@@ -1309,17 +1357,18 @@ async function uploadGalleryImage(dataUrl, uid){
     return data.publicUrl;
   }catch(e){ return null; }
 }
-async function saveGalleryPhoto(){
+async function confirmGalleryUpload(){
   const me=ME(); if(!me){ openAuth('signin'); return; }
-  if(!pendingGallery) return;
+  if(!pendingGallery){ closeModal('galleryScrim'); return; }
+  const trip = ($("#gl_trip") ? $("#gl_trip").value : "").trim();
+  if(!trip){ toast("Pick a trip for this photo"); return; }
   toast("Uploading photo…");
   const url = await uploadGalleryImage(pendingGallery, me.id);
-  pendingGallery = null;
   if(!url){ toast("Couldn't upload — is the gallery set up in Supabase?"); return; }
-  const cap = (prompt("Add a caption (optional):")||"").trim();
-  const { error } = await sb.from('gallery').insert({ image_url:url, caption:cap||null, uploaded_by:me.id });
+  const { error } = await sb.from('gallery').insert({ image_url:url, caption:trip, uploaded_by:me.id });
   if(error){ toast(friendly(error)); return; }
-  await reload(); go('gallery'); toast("Photo added");
+  pendingGallery = null;
+  closeModal('galleryScrim'); await reload(); go('gallery'); toast("Photo added");
 }
 async function removeGalleryPhoto(id){
   if(!confirm("Remove this photo from the gallery?")) return;
@@ -1327,6 +1376,17 @@ async function removeGalleryPhoto(id){
   if(error){ toast(friendly(error)); return; }
   await reload(); toast("Photo removed");
 }
+/* ---- lightbox (click a photo to view / save) ---- */
+function openLightbox(url){
+  const i=$("#lb_img"); if(i) i.src=url;
+  const a=$("#lb_open"); if(a) a.href=url;
+  const l=$("#lightbox"); if(l) l.classList.add('on');
+}
+function closeLightbox(){
+  const l=$("#lightbox"); if(l) l.classList.remove('on');
+  const i=$("#lb_img"); if(i) i.src='';
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeLightbox(); });
 function renderGallery(){
   const body=$("#galleryBody"), acts=$("#galleryActions"); if(!body) return;
   const me=ME();
@@ -1334,17 +1394,28 @@ function renderGallery(){
     ? `<label class="btn" for="gl_file">+ Add a photo</label><input id="gl_file" type="file" accept="image/*" style="display:none" onchange="readGalleryFile(this)">`
     : `<button class="btn" onclick="openAuth('signin')">Sign in to add photos</button>`;
   if(!GALLERY.length){
-    body.innerHTML = `<div class="empty"><h3>No photos yet</h3><p>Share moments from the trips — the fairways, the clubhouse, the trophy presentations. Any signed-in member can add to the gallery.</p>${me?`<div class="row"><label class="btn" for="gl_file2">Add the first photo</label><input id="gl_file2" type="file" accept="image/*" style="display:none" onchange="readGalleryFile(this)"></div>`:''}</div>`;
+    body.innerHTML = `<div class="empty"><h3>No photos yet</h3><p>Share moments from the trips — the fairways, the clubhouse, the trophy presentations. Any signed-in member can add a photo and tag it to a trip.</p>${me?`<div class="row"><label class="btn" for="gl_file2">Add the first photo</label><input id="gl_file2" type="file" accept="image/*" style="display:none" onchange="readGalleryFile(this)"></div>`:''}</div>`;
     return;
   }
-  body.innerHTML = `<div class="ggrid">` + GALLERY.map(g=>{
-    const canDel = isAdmin() || (me && me.id===g.by);
-    return `<figure class="gcard">
-      <img src="${esc(g.url)}" alt="${esc(g.caption||'Gallery photo')}" loading="lazy">
-      ${g.caption?`<figcaption>${esc(g.caption)}</figcaption>`:''}
-      ${canDel?`<button class="gdel" title="Remove" onclick="removeGalleryPhoto('${g.id}')">&times;</button>`:''}
-    </figure>`;
-  }).join("") + `</div>`;
+  // group photos by trip (stored in caption)
+  const groups = {};
+  GALLERY.forEach(g=>{ const k=(g.caption||'').trim()||'Untagged'; (groups[k]=groups[k]||[]).push(g); });
+  const known = GALLERY_TRIPS.filter(t=>groups[t]);
+  const others = Object.keys(groups).filter(k=>!GALLERY_TRIPS.includes(k)).sort();
+  const order = [...known, ...others];
+  body.innerHTML = order.map(trip=>{
+    const photos = groups[trip];
+    return `<div class="gsection">
+      <h3 class="gsection-title">${esc(trip)}<span class="gcount">${photos.length} photo${photos.length===1?'':'s'}</span></h3>
+      <div class="ggrid">${photos.map(g=>{
+        const canDel = isAdmin() || (me && me.id===g.by);
+        return `<figure class="gcard" onclick="openLightbox('${esc(g.url)}')">
+          <img src="${esc(g.url)}" alt="${esc(trip)}" loading="lazy">
+          ${canDel?`<button class="gdel" title="Remove" onclick="event.stopPropagation();removeGalleryPhoto('${g.id}')">&times;</button>`:''}
+        </figure>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ============================================================
