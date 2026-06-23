@@ -336,6 +336,46 @@
   .lb-inner{max-width:min(1100px,94vw);max-height:90vh;display:flex;flex-direction:column;gap:12px;align-items:center}
   .lb-inner img{max-width:100%;max-height:80vh;border-radius:10px;box-shadow:var(--shadow);object-fit:contain}
   .lb-bar{display:flex;gap:10px}
+
+  /* ---------- 2027 vote ballot ---------- */
+  .voteopt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--rule);border-radius:10px;cursor:pointer;background:rgba(255,255,255,.4)}
+  .voteopt.sel{border-color:var(--brass);background:rgba(196,154,74,.12)}
+  .voteopt input[type=radio]{width:18px;height:18px;flex:none;accent-color:var(--brass-deep)}
+  .voteopt .vlabel{font-weight:600;color:var(--ink);font-size:15px}
+  .voteopt select{margin-left:4px;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;font-size:13px;background:var(--paper);color:var(--ink)}
+  .voteopt .vtally{margin-left:auto;font-family:"Spline Sans Mono",monospace;font-weight:600;color:var(--ink);font-size:15px}
+  .voteopt .vrm{border:0;background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+  .voteopt .vrm:hover{color:var(--flag)}
+  .prevbreak{font-size:12px;color:var(--ink-soft);margin:0 0 4px 46px}
+
+  /* ---------- pairings · team battles ---------- */
+  .trip-block{margin-bottom:26px}
+  .day-block{margin:12px 0 20px}
+  .day-label{font-family:"Spline Sans Mono",monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin:0 0 10px}
+  .versus{position:relative;display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch;
+    background:linear-gradient(180deg,rgba(20,39,28,.55),rgba(20,39,28,.32));border:1px solid var(--pine-line);
+    border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .versus .team{background:rgba(0,0,0,.18);border:1px solid var(--pine-line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px}
+  .versus .team.fav{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass) inset}
+  .team-tag{font-family:"Spline Sans Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut-on-pine)}
+  .team.fav .team-tag{color:var(--brass)}
+  .team-names{font-family:"Bodoni Moda",serif;font-size:18px;color:var(--paper-on-pine);line-height:1.3}
+  .team-hcap{margin-top:auto;font-family:"Spline Sans Mono",monospace;font-size:24px;font-weight:600;color:var(--paper-on-pine);padding-top:8px}
+  .team-hcap span{display:block;font-size:10px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--mut-on-pine)}
+  .vs-medal{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:58px}
+  .vs-medal .swords{font-size:26px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+  .vs-medal .vs{font-family:"Bodoni Moda",serif;font-weight:700;font-size:22px;color:var(--brass);letter-spacing:.06em}
+  .vs-tag{grid-column:1/-1;text-align:center;font-size:13px;font-style:italic;color:var(--mut-on-pine);margin-top:2px}
+  .vs-del{position:absolute;top:8px;right:10px;border:0;background:transparent;color:var(--mut-on-pine);font-size:20px;line-height:1;cursor:pointer}
+  .vs-del:hover{color:var(--flag)}
+  @media(max-width:560px){ .versus{grid-template-columns:1fr} .vs-medal{flex-direction:row;gap:10px;padding:4px 0} }
+  /* pairing modal member pickers */
+  .teamcols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px}
+  .memchecks{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow:auto;border:1px solid var(--rule);border-radius:8px;padding:9px}
+  .memcheck{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
+  .memcheck input{flex:none;accent-color:var(--brass-deep)}
+  .memcheck span{margin-left:auto;font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-soft)}
+  @media(max-width:560px){ .teamcols{grid-template-columns:1fr} }
 </style>
 
 <div class="wrap">
@@ -355,9 +395,10 @@
     <button data-v="record">The Record</button>
     <button data-v="fame">Hall of Fame</button>
     <button data-v="dests">Destinations</button>
-    <button data-v="vote">The Vote</button>
+    <button data-v="pairings">Pairings</button>
     <button data-v="gallery">Gallery</button>
     <button data-v="members">Members</button>
+    <button data-v="vote">The Vote</button>
   </nav>
 
   <main>
@@ -394,12 +435,24 @@
       <div class="grid g3" id="destGrid"></div>
     </section>
 
+    <!-- ============ PAIRINGS ============ -->
+    <section class="view" id="pairings">
+      <div class="head-row">
+        <div><p class="eyebrow" style="color:var(--brass)">Teams · current trip</p>
+          <h2 class="disp" style="color:var(--paper-on-pine)">Pairings</h2>
+          <p class="sub-on-pine">Two teams enter, one team leaves. Combined handicaps totalled automatically.</p></div>
+        <div id="pairingsActions"></div>
+      </div>
+      <div id="pairingsBody"></div>
+    </section>
+
     <!-- ============ VOTE ============ -->
     <section class="view" id="vote">
       <div class="head-row">
-        <div><p class="eyebrow" style="color:var(--brass)">Pick next year</p>
+        <div><p class="eyebrow" style="color:var(--brass)">Where to in 2027</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">The Vote</h2>
-          <p class="sub-on-pine">Vote for as many as you'd fancy. Tally updates for the whole group.</p></div>
+          <p class="sub-on-pine">One vote each. Admins set the options; the group picks.</p></div>
+        <button class="btn admin-only" onclick="addVoteOption()">+ Add option</button>
       </div>
       <div id="voteBody"></div>
     </section>
@@ -569,6 +622,25 @@
   </div>
 </div>
 
+<div class="scrim" id="pairScrim">
+  <div class="modal">
+    <h3>Create a matchup</h3>
+    <p class="sub">Pick a day, then build two teams. Combined handicaps are totalled for you.</p>
+    <div class="row2">
+      <div class="field"><label class="f">Trip</label><input id="pr_trip" list="pr_trips" placeholder="Bend - 2026"><datalist id="pr_trips"></datalist></div>
+      <div class="field"><label class="f">Day</label><input id="pr_day" type="number" min="1" value="1"></div>
+    </div>
+    <div class="teamcols">
+      <div><div class="f" style="margin-bottom:6px">Team A</div><div id="pr_teamA" class="memchecks"></div></div>
+      <div><div class="f" style="margin-bottom:6px">Team B</div><div id="pr_teamB" class="memchecks"></div></div>
+    </div>
+    <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn ghost" onclick="closeModal('pairScrim')">Cancel</button>
+      <button class="btn" onclick="savePairing()">Save matchup</button>
+    </div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -598,6 +670,8 @@ const GALLERY_TRIPS = ["Myrtle Beach - 2024", "St. George - 2025", "Bend - 2026"
 
 /* ---- state (same shapes the render layer already expects) ---- */
 let TRIPS = [], DESTS = [], VOTES = {}, MINE = {}, MEMBERS = [], GALLERY = [], DLIKES = {}, DMINE = {}, DCOMMENTS = {};
+let VOTE_OPTIONS = [], TRIP_VOTES = [], MYVOTE = null, PAIRINGS = [];
+const ANY_PREV = "Any Previous Trip";
 let MYID = null;
 
 /* ---- helpers ---- */
@@ -630,7 +704,7 @@ async function loadAll(){
   const { data:{ session } } = await sb.auth.getSession();
   MYID = session ? session.user.id : null;
 
-  const [pf, tr, rs, ac, ds, vt, gl, dl, dc] = await Promise.all([
+  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs] = await Promise.all([
     sb.from('profiles').select('*').order('created_at'),
     sb.from('trips').select('*'),
     sb.from('results').select('*'),
@@ -640,6 +714,9 @@ async function loadAll(){
     sb.from('gallery').select('*').order('created_at', { ascending:false }),
     sb.from('destination_likes').select('*'),
     sb.from('destination_comments').select('*').order('created_at', { ascending:true }),
+    sb.from('vote_options').select('*').order('created_at'),
+    sb.from('trip_votes').select('*'),
+    sb.from('pairings').select('*').order('created_at'),
   ]);
 
   MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, pic:p.avatar_url }));
@@ -665,6 +742,11 @@ async function loadAll(){
   (dl.data||[]).forEach(l=>{ DLIKES[l.destination_id]=(DLIKES[l.destination_id]||0)+1; if(MYID && l.profile_id===MYID) DMINE[l.destination_id]=true; });
   DCOMMENTS = {};
   (dc.data||[]).forEach(c=>{ (DCOMMENTS[c.destination_id]=DCOMMENTS[c.destination_id]||[]).push({ id:c.id, by:c.profile_id, body:c.body }); });
+
+  VOTE_OPTIONS = (vo.data||[]).map(o=>({ id:o.id, label:o.label }));
+  TRIP_VOTES = (tvotes.data||[]).map(v=>({ id:v.id, by:v.profile_id, option:v.option_label, dest:v.dest_id }));
+  MYVOTE = MYID ? (TRIP_VOTES.find(v=>v.by===MYID) || null) : null;
+  PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, a:p.team_a||[], b:p.team_b||[] }));
 }
 async function reload(){ await loadAll(); renderAll(); }
 
@@ -690,8 +772,7 @@ function renderClubhouse(){
   const champ = last ? last.champion : null;
   const places = new Set(ts.map(t=>t.loc)).size;
   const aceCount = TRIPS.reduce((s,t)=> s + (t.aces?t.aces.length:0), 0);
-  const ranked = rankedDests();
-  const front = ranked[0];
+  const lead = voteLeader();
   el.innerHTML = `
     <div class="grid g2">
       <div class="card hero">
@@ -714,16 +795,14 @@ function renderClubhouse(){
       </div>
       <div class="card">
         <div class="pad">
-          <p class="eyebrow">Front&#8209;runner for next year</p>
-          ${front ? `
-            <h3 class="disp">${esc(front.name)}</h3>
-            <div style="color:var(--ink-soft);font-size:13px;margin:4px 0 12px">${esc(front.region||"")}</div>
-            <div class="countdown"><span class="num">${front.votes}</span><span class="u">vote${front.votes===1?"":"s"} so far</span></div>
-            <div style="margin-top:14px"><span class="cost mono" style="color:var(--ink);font-weight:600">${money(front.costPerDay)}<small style="color:var(--ink-soft)"> / day</small></span></div>
+          <p class="eyebrow">Front&#8209;runner for 2027</p>
+          ${lead && lead.count>0 ? `
+            <h3 class="disp">${esc(lead.label)}</h3>
+            <div class="countdown" style="margin-top:10px"><span class="num">${lead.count}</span><span class="u">vote${lead.count===1?"":"s"} for 2027</span></div>
             <button class="btn ghost tiny" style="margin-top:18px" onclick="go('vote')">Cast your vote →</button>
           ` : `
-            <p style="color:var(--ink-soft);font-size:14px">No destinations on the ballot yet.</p>
-            <button class="btn tiny" style="margin-top:8px" onclick="go('dests')">Add destinations →</button>
+            <p style="color:var(--ink-soft);font-size:14px">No votes for 2027 yet.</p>
+            <button class="btn tiny" style="margin-top:8px" onclick="go('vote')">Open the ballot →</button>
           `}
         </div>
       </div>
@@ -849,8 +928,22 @@ function renderFame(){
 /* ============================================================
    DESTINATIONS
    ============================================================ */
-function rankedDests(){
-  return DESTS.map(d=>({...d, votes: VOTES[d.id]||0})).sort((a,b)=> b.votes-a.votes);
+function voteCounts(){
+  const direct = {};
+  VOTE_OPTIONS.forEach(o=> direct[o.label]=0);
+  let anyTotal = 0; const perDest = {};
+  TRIP_VOTES.forEach(v=>{
+    if(v.option===ANY_PREV){ anyTotal++; if(v.dest){ perDest[v.dest]=(perDest[v.dest]||0)+1; } }
+    else { direct[v.option]=(direct[v.option]||0)+1; }
+  });
+  return { direct, anyTotal, perDest, total: TRIP_VOTES.length };
+}
+function voteLeader(){
+  const c = voteCounts(); const arr=[];
+  Object.keys(c.direct).forEach(l=> arr.push({ label:l, count:c.direct[l] }));
+  Object.keys(c.perDest).forEach(id=>{ const d=DESTS.find(x=>x.id===id); arr.push({ label:(d?d.name:'Previous trip'), count:c.perDest[id] }); });
+  arr.sort((a,b)=> b.count-a.count);
+  return arr[0]||null;
 }
 function nameOf(pid){ const m=MEMBERS.find(x=>x.id===pid); return m?m.name:"Member"; }
 async function toggleLike(id){
@@ -905,39 +998,181 @@ function renderDests(){
    THE VOTE
    ============================================================ */
 function renderVote(){
-  const el = $("#voteBody");
-  const ranked = rankedDests();
-  if(!ranked.length){ el.innerHTML = `<div class="empty"><h3>Nothing on the ballot</h3><p>Add some destinations first, then the group can vote on where to go next.</p><div class="row"><button class="btn" onclick="go('dests')">Add destinations</button></div></div>`; return; }
-  const max = Math.max(1, ...ranked.map(r=>r.votes));
-  el.innerHTML = `<div class="card"><div class="pad"><div style="display:flex;flex-direction:column;gap:14px">${
-    ranked.map(d=>{
-      const voted = !!MINE[d.id];
-      const pct = Math.round((d.votes/max)*100);
-      return `<div style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
-          <div><b style="color:var(--ink);font-size:16px">${esc(d.name)}</b> <span style="color:var(--ink-soft);font-size:13px">${esc(d.region||"")}</span></div>
-          <span class="mono" style="color:var(--ink-soft);font-size:13px">${money(d.costPerDay)} / day</span>
-        </div>
-        <div class="foot" style="margin:0">
-          <div class="votebar"><i style="width:${pct}%"></i></div>
-          <span class="votecount">${d.votes} vote${d.votes===1?"":"s"}</span>
-          <button class="vbtn ${voted?"voted":""}" onclick="toggleVote('${d.id}')">${voted?"Voted":"Vote"}</button>
-        </div>
-      </div>`;
-    }).join("")
-  }</div></div></div>`;
+  const el = $("#voteBody"); if(!el) return;
+  const c = voteCounts();
+  const me = ME();
+  const myOpt = MYVOTE ? MYVOTE.option : null;
+  const myDest = MYVOTE ? MYVOTE.dest : null;
+  const optRow = (label, count, removableId) => {
+    const sel = myOpt===label;
+    return `<label class="voteopt ${sel?'sel':''}">
+      <input type="radio" name="vote2027" value="${esc(label)}" ${sel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)">
+      <span class="vlabel">${esc(label)}</span>
+      <span class="vtally">${count}</span>
+      ${(isAdmin()&&removableId)?`<button class="vrm" title="Remove option" onclick="event.preventDefault();removeVoteOption('${removableId}')">&times;</button>`:''}
+    </label>`;
+  };
+  const anySel = myOpt===ANY_PREV;
+  const destOpts = DESTS.map(d=>`<option value="${d.id}" ${anySel&&myDest===d.id?'selected':''}>${esc(d.name)}</option>`).join('');
+  const anyRow = `<label class="voteopt ${anySel?'sel':''}">
+    <input type="radio" id="vote_any" name="vote2027" value="${esc(ANY_PREV)}" ${anySel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)">
+    <span class="vlabel">Any previous trip</span>
+    ${DESTS.length?`<select id="vote_prevdest" onclick="event.stopPropagation()" onchange="var r=document.getElementById('vote_any'); if(r&&!r.disabled){ r.checked=true; vSel(r); }">${destOpts}</select>`:`<span style="font-size:12px;color:var(--ink-soft)">No previous trips yet</span>`}
+    <span class="vtally">${c.anyTotal}</span>
+  </label>`;
+  const breakdown = Object.keys(c.perDest).length
+    ? `<div class="prevbreak">${Object.keys(c.perDest).map(id=>{ const d=DESTS.find(x=>x.id===id); return `${esc(d?d.name:'Previous')} &times;${c.perDest[id]}`; }).join(' · ')}</div>`
+    : '';
+  const leader = voteLeader();
+  el.innerHTML = `<div class="card"><div class="pad">
+    <div class="head-row" style="margin-bottom:4px">
+      <h3 class="disp" style="margin:0;color:var(--ink)">2027 Trip</h3>
+      <span class="mono" style="color:var(--ink-soft);font-size:13px">${c.total} vote${c.total===1?'':'s'} cast</span>
+    </div>
+    <p class="sub" style="margin-top:0">One vote each — pick where you'd most like to go in 2027.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+      ${VOTE_OPTIONS.map(o=>optRow(o.label, c.direct[o.label]||0, o.id)).join('')}
+      ${anyRow}
+      ${breakdown}
+      ${VOTE_OPTIONS.length===0?'<p class="secnote">No options yet.'+(isAdmin()?' Use “+ Add option” to add some.':'')+'</p>':''}
+    </div>
+    ${ me ? `<div class="modal-foot" style="margin-top:18px">
+        ${MYVOTE?`<button class="btn ghost" onclick="clearMyVote()">Withdraw my vote</button>`:'<span></span>'}
+        <button class="btn" style="margin-left:auto" onclick="castVote()">${MYVOTE?'Update my vote':'Cast my vote'}</button>
+      </div>`
+      : `<div class="secnote" style="margin-top:18px"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to cast your vote.</div>` }
+    ${ leader&&leader.count>0 ? `<div style="margin-top:14px;font-size:13px;color:var(--ink-soft)">Leading: <strong style="color:var(--ink)">${esc(leader.label)}</strong> with ${leader.count} vote${leader.count===1?'':'s'}.</div>`:'' }
+  </div></div>`;
 }
-async function toggleVote(id){
-  if(!isAuthed()){ toast("Sign in to vote"); openAuth("signin"); return; }
-  const had = !!MINE[id];
-  try{
-    if(had){ const { error }=await sb.from('votes').delete().eq('destination_id',id).eq('profile_id',MYID); if(error) throw error; }
-    else { const { error }=await sb.from('votes').insert({ destination_id:id, profile_id:MYID }); if(error) throw error; }
-  }catch(e){ toast(friendly(e)); return; }
-  if(had){ delete MINE[id]; VOTES[id]=Math.max(0,(VOTES[id]||0)-1); }
-  else { MINE[id]=true; VOTES[id]=(VOTES[id]||0)+1; }
-  renderVote(); renderDests(); renderClubhouse();
-  toast(had?"Vote withdrawn":"Vote counted");
+function vSel(el){
+  document.querySelectorAll('#voteBody .voteopt').forEach(x=>x.classList.remove('sel'));
+  const p = el.closest('.voteopt'); if(p) p.classList.add('sel');
+}
+async function castVote(){
+  if(!isAuthed()){ toast("Sign in to vote"); openAuth('signin'); return; }
+  const sel = document.querySelector('input[name=vote2027]:checked');
+  if(!sel){ toast("Pick an option first"); return; }
+  let option = sel.value, dest = null;
+  if(option===ANY_PREV){
+    const dd = $("#vote_prevdest"); dest = dd ? dd.value : "";
+    if(!dest){ toast("Choose which previous trip"); return; }
+  }
+  await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
+  const { error } = await sb.from('trip_votes').insert({ poll:'2027', profile_id:MYID, option_label:option, dest_id:dest||null });
+  if(error){ toast(friendly(error)); return; }
+  await reload(); go('vote'); toast("Vote cast");
+}
+async function clearMyVote(){
+  if(!isAuthed()) return;
+  const { error } = await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); go('vote'); toast("Vote withdrawn");
+}
+async function addVoteOption(){
+  if(!isAdmin()) return;
+  const label = (prompt("New trip option (e.g., Scottsdale):")||"").trim();
+  if(!label) return;
+  const { error } = await sb.from('vote_options').insert({ label });
+  if(error){ toast(friendly(error)); return; }
+  await reload(); go('vote'); toast("Option added");
+}
+async function removeVoteOption(id){
+  if(!isAdmin()) return;
+  if(!confirm("Remove this option? Any votes already cast for it will be cleared.")) return;
+  const opt = VOTE_OPTIONS.find(o=>o.id===id);
+  const { error } = await sb.from('vote_options').delete().eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  if(opt) await sb.from('trip_votes').delete().eq('poll','2027').eq('option_label', opt.label);
+  await reload(); go('vote'); toast("Option removed");
+}
+
+/* ============================================================
+   PAIRINGS  (team battles · admin-managed)
+   ============================================================ */
+function hcapNum(pid){ const m=MEMBERS.find(x=>x.id===pid); const v=(m&&m.handicap!=null&&m.handicap!=="")?parseFloat(m.handicap):NaN; return isNaN(v)?0:v; }
+function teamTotal(ids){ return (ids||[]).reduce((s,id)=> s+hcapNum(id), 0); }
+function teamNames(ids){ return (ids||[]).map(id=>{ const m=MEMBERS.find(x=>x.id===id); return m?m.name:'?'; }); }
+function renderPairings(){
+  const body=$("#pairingsBody"), acts=$("#pairingsActions"); if(!body) return;
+  acts.innerHTML = isAdmin() ? `<button class="btn" onclick="openPairModal()">+ Create a matchup</button>` : '';
+  if(!PAIRINGS.length){
+    body.innerHTML = `<div class="empty"><h3>No matchups set</h3><p>${isAdmin()
+      ? 'Build two teams for a day of the current trip — the website totals the handicaps on each side and sets the battle.'
+      : 'An admin will set the matchups for the current trip. Check back to see who you are up against.'}</p>${isAdmin()?`<div class="row"><button class="btn" onclick="openPairModal()">Create the first matchup</button></div>`:''}</div>`;
+    return;
+  }
+  const byTrip = {};
+  PAIRINGS.forEach(p=>{ const k=p.trip||'Trip'; (byTrip[k]=byTrip[k]||[]).push(p); });
+  const tripOrder = [...GALLERY_TRIPS].reverse().filter(t=>byTrip[t]);
+  const others = Object.keys(byTrip).filter(k=>!tripOrder.includes(k)).sort();
+  const order = [...tripOrder, ...others];
+  body.innerHTML = order.map(trip=>{
+    const byDay = {};
+    byTrip[trip].forEach(p=>{ const d=p.day||1; (byDay[d]=byDay[d]||[]).push(p); });
+    const days = Object.keys(byDay).map(Number).sort((a,b)=>a-b);
+    return `<div class="trip-block">
+      <h3 class="gsection-title">${esc(trip)}</h3>
+      ${days.map(d=>`<div class="day-block">
+        <div class="day-label">Day ${d}</div>
+        ${byDay[d].map(p=>versusCard(p)).join('')}
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+function versusCard(p){
+  const aT=teamTotal(p.a), bT=teamTotal(p.b);
+  const aFav = aT<bT, bFav = bT<aT;
+  const an=teamNames(p.a), bn=teamNames(p.b);
+  const tagline = aT===bT
+    ? "Level on paper — may the steadier nerve win."
+    : `${esc((aFav?an:bn).join(' & '))} hold the edge on handicap. The card says otherwise more often than you'd think.`;
+  return `<div class="versus">
+    ${isAdmin()?`<button class="vs-del" title="Remove matchup" onclick="removePairing('${p.id}')">&times;</button>`:''}
+    <div class="team ${aFav?'fav':''}">
+      <div class="team-tag">Team A${aFav?' · favoured':''}</div>
+      <div class="team-names">${an.length?an.map(esc).join('<br>'):'—'}</div>
+      <div class="team-hcap">${aT.toFixed(1)}<span>combined hcp</span></div>
+    </div>
+    <div class="vs-medal"><div class="swords">&#9876;</div><div class="vs">VS</div></div>
+    <div class="team ${bFav?'fav':''}">
+      <div class="team-tag">Team B${bFav?' · favoured':''}</div>
+      <div class="team-names">${bn.length?bn.map(esc).join('<br>'):'—'}</div>
+      <div class="team-hcap">${bT.toFixed(1)}<span>combined hcp</span></div>
+    </div>
+    <div class="vs-tag">${tagline}</div>
+  </div>`;
+}
+function openPairModal(){
+  if(!isAdmin()) return;
+  const trips = [...new Set([...GALLERY_TRIPS, ...TRIPS.map(t=>`${t.loc||''}${t.year?(' '+t.year):''}`.trim())])].filter(Boolean);
+  const dl=$("#pr_trips"); if(dl) dl.innerHTML = trips.map(t=>`<option value="${esc(t)}"></option>`).join('');
+  const ti=$("#pr_trip"); if(ti) ti.value = GALLERY_TRIPS[GALLERY_TRIPS.length-1] || '';
+  const dy=$("#pr_day"); if(dy) dy.value = 1;
+  const mk = MEMBERS.map(m=>`<label class="memcheck"><input type="checkbox" value="${m.id}"> ${esc(m.name)} <span>hcp ${(m.handicap!=null&&m.handicap!=='')?esc(String(m.handicap)):'—'}</span></label>`).join('');
+  const a=$("#pr_teamA"), b=$("#pr_teamB");
+  if(a) a.innerHTML = mk || '<p class="secnote">No members yet.</p>';
+  if(b) b.innerHTML = mk || '<p class="secnote">No members yet.</p>';
+  openModal('pairScrim');
+}
+async function savePairing(){
+  if(!isAdmin()) return;
+  const trip=($("#pr_trip").value||'').trim();
+  const day=intOrNull($("#pr_day").value)||1;
+  const a=[...document.querySelectorAll('#pr_teamA input:checked')].map(x=>x.value);
+  const b=[...document.querySelectorAll('#pr_teamB input:checked')].map(x=>x.value);
+  if(!trip){ toast("Name the trip"); return; }
+  if(!a.length || !b.length){ toast("Pick members for both teams"); return; }
+  if(a.some(id=>b.includes(id))){ toast("A player can't be on both teams"); return; }
+  const { error } = await sb.from('pairings').insert({ trip, day, team_a:a, team_b:b });
+  if(error){ toast(friendly(error)); return; }
+  closeModal('pairScrim'); await reload(); go('pairings'); toast("Matchup set");
+}
+async function removePairing(id){
+  if(!isAdmin()) return;
+  if(!confirm("Remove this matchup?")) return;
+  const { error } = await sb.from('pairings').delete().eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); toast("Matchup removed");
 }
 
 /* ============================================================
@@ -1437,7 +1672,7 @@ function renderGallery(){
 /* ============================================================
    Render all + boot
    ============================================================ */
-function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderVote(); renderGallery(); renderMembers(); }
+function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); }
 
 function connState(ok){
   const d=$("#syncDot"), t=$("#syncText");
