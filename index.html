@@ -296,6 +296,56 @@
   .admin-only{display:none}
   body.role-admin .admin-only{display:inline-block}
 
+  /* ---------- accolades (Hall of Fame) ---------- */
+  .acco-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .acco-list{display:grid;gap:12px;margin-top:12px}
+  .acco{display:flex;align-items:flex-start;gap:14px;border:1px solid var(--rule);border-left:4px solid var(--brass);
+    border-radius:10px;padding:14px 16px;background:rgba(196,154,74,.05)}
+  .acco-body{flex:1;min-width:0}
+  .acco-title{font-family:"Bodoni Moda",serif;font-weight:700;font-size:16px;color:var(--brass-deep);line-height:1.2}
+  .acco-name{font-weight:700;color:var(--ink);font-size:14px;margin-top:2px}
+  .acco-note{color:var(--ink-soft);font-size:14px;margin-top:4px;white-space:pre-wrap}
+  .acco-edit{flex:0 0 auto}
+
+  /* ---------- wagers ---------- */
+  .wg-section{margin-bottom:22px}
+  .wg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;margin-top:10px}
+  .wg-card{background:linear-gradient(180deg,var(--paper),var(--paper-2));color:var(--ink);
+    border-radius:12px;box-shadow:var(--shadow);padding:18px 18px 16px;border-top:4px solid var(--ink-soft);
+    display:flex;flex-direction:column;gap:10px}
+  .wg-card.s-accepted{border-top-color:var(--fairway)}
+  .wg-card.s-unaccepted{border-top-color:var(--brass)}
+  .wg-card.s-completed{border-top-color:var(--brass-deep)}
+  .wg-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .wg-amount{font-family:"Bodoni Moda",serif;font-weight:900;font-size:30px;color:var(--ink);line-height:1}
+  .wg-badge{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+    padding:4px 9px;border-radius:999px;white-space:nowrap}
+  .wg-badge.b-unaccepted{background:rgba(196,154,74,.16);color:var(--brass-deep)}
+  .wg-badge.b-accepted{background:rgba(76,138,90,.16);color:var(--fairway)}
+  .wg-badge.b-completed{background:rgba(154,120,54,.18);color:var(--brass-deep)}
+  .wg-terms{font-size:15px;color:var(--ink);line-height:1.4;white-space:pre-wrap}
+  .wg-by{font-size:12px;color:var(--ink-soft)}
+  .wg-parties{display:flex;flex-wrap:wrap;gap:7px}
+  .wg-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);border-radius:999px;
+    padding:3px 10px 3px 3px;font-size:12px;background:#fff}
+  .wg-chip .wg-cn{font-weight:600;color:var(--ink)}
+  .wg-chip i{font-style:normal;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft)}
+  .wg-chip.ok{border-color:var(--fairway);background:rgba(76,138,90,.1)}
+  .wg-chip.ok i{color:var(--fairway)}
+  .wg-chip.wait i{color:var(--brass-deep)}
+  .wg-proposal{font-size:13px;color:var(--ink-soft);border-top:1px dashed var(--rule);padding-top:10px}
+  .wg-proposal b{color:var(--ink)}
+  .wg-result{font-family:"Bodoni Moda",serif;font-size:17px;color:var(--ink)}
+  .wg-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:2px}
+  .wg-note{font-size:12px;color:var(--ink-soft);font-style:italic}
+  .wg-checks{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:230px;overflow:auto;
+    border:1px solid var(--rule);border-radius:10px;padding:10px;margin-top:6px}
+  @media(max-width:520px){.wg-checks{grid-template-columns:1fr}}
+  .wg-check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;
+    padding:5px 6px;border-radius:8px}
+  .wg-check:hover{background:rgba(46,74,56,.06)}
+  .wg-check input{width:auto;margin:0}
+
   .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px}
   .mcard{border:1px solid var(--rule);border-top:4px solid var(--brass);border-radius:12px;padding:20px 16px 18px;
     background:var(--paper);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;color:var(--ink)}
@@ -426,6 +476,7 @@
     <button data-v="gallery">Gallery</button>
     <button data-v="members">Members</button>
     <button data-v="vote">The Vote</button>
+    <button data-v="wagers">Wagers</button>
   </nav>
 
   <main>
@@ -503,6 +554,17 @@
         <div id="memberActions"></div>
       </div>
       <div id="membersBody"></div>
+    </section>
+
+    <!-- ============ WAGERS ============ -->
+    <section class="view" id="wagers">
+      <div class="head-row">
+        <div><p class="eyebrow" style="color:var(--brass)">Side bets &amp; settled scores</p>
+          <h2 class="disp" style="color:var(--paper-on-pine)">Wagers</h2>
+          <p class="sub-on-pine">Propose a bet, name who's in, set the stakes. Everyone confirms to make it active — then agree the outcome to settle.</p></div>
+        <div id="wagerActions"></div>
+      </div>
+      <div id="wagerBody"></div>
     </section>
   </main>
 
@@ -683,6 +745,53 @@
   </div>
 </div>
 
+<!-- ===== WAGER MODAL ===== -->
+<div class="scrim" id="wagerScrim">
+  <div class="modal">
+    <h3>Create a wager</h3>
+    <p class="sub">Pick who you're betting against, set the amount and spell out the terms. Everyone has to accept before it goes live.</p>
+    <label class="f">Who's in on this bet?</label>
+    <div id="wg_members" class="wg-checks"></div>
+    <div class="field" style="margin-top:14px"><label class="f">Amount ($)</label><input id="wg_amount" type="number" min="1" placeholder="20"></div>
+    <div class="field"><label class="f">Terms of the bet</label><textarea id="wg_terms" placeholder="e.g. First to three-putt buys the round. Or: I'll break 90 at Tetherow."></textarea></div>
+    <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn ghost" onclick="closeModal('wagerScrim')">Cancel</button>
+      <button class="btn" onclick="saveWager()">Propose wager</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- ===== OUTCOME MODAL ===== -->
+<div class="scrim" id="outcomeScrim">
+  <div class="modal">
+    <h3>Settle the wager</h3>
+    <p class="sub">Name who won. Everyone in the bet confirms before it's marked Completed — if someone disagrees they can dispute and re-propose.</p>
+    <div class="field"><label class="f">Winner</label><select id="oc_winner"></select></div>
+    <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn ghost" onclick="closeModal('outcomeScrim')">Cancel</button>
+      <button class="btn" onclick="submitOutcome()">Propose outcome</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- ===== ACCOLADE MODAL ===== -->
+<div class="scrim" id="accScrim">
+  <div class="modal">
+    <h3 id="accTitle">Add an accolade</h3>
+    <p class="sub">Immortalise a moment — a hole‑in‑one, most beers sunk on the course, number of ER visits. Anything worth remembering.</p>
+    <div class="field"><label class="f">Member</label><select id="acc_member"></select></div>
+    <div class="field"><label class="f">Headline (optional)</label><input id="acc_headline" placeholder="e.g. Most beers on the back nine"></div>
+    <div class="field"><label class="f">What they accomplished</label><textarea id="acc_note" placeholder="Tell the story…"></textarea></div>
+    <div class="modal-foot">
+      <button class="btn danger tiny" id="acc_delete" style="display:none" onclick="deleteAccolade()">Delete</button>
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn ghost" onclick="closeModal('accScrim')">Cancel</button>
+        <button class="btn" onclick="saveAccolade()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -713,6 +822,7 @@ const GALLERY_TRIPS = ["Myrtle Beach - 2024", "St. George - 2025", "Bend - 2026"
 /* ---- state (same shapes the render layer already expects) ---- */
 let TRIPS = [], DESTS = [], VOTES = {}, MINE = {}, MEMBERS = [], GALLERY = [], DLIKES = {}, DMINE = {}, DCOMMENTS = {};
 let VOTE_OPTIONS = [], TRIP_VOTES = [], MYVOTE = null, PAIRINGS = [], SCORES = [];
+let ACCOLADES = [], WAGERS = [];
 const ANY_PREV = "Any Previous Trip";
 let MYID = null;
 
@@ -746,7 +856,7 @@ async function loadAll(){
   const { data:{ session } } = await sb.auth.getSession();
   MYID = session ? session.user.id : null;
 
-  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc] = await Promise.all([
+  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc, acc, wg, wp] = await Promise.all([
     sb.from('profiles').select('*').order('created_at'),
     sb.from('trips').select('*'),
     sb.from('results').select('*'),
@@ -760,6 +870,9 @@ async function loadAll(){
     sb.from('trip_votes').select('*'),
     sb.from('pairings').select('*').order('created_at'),
     sb.from('scores').select('*').order('created_at'),
+    sb.from('accolades').select('*').order('created_at', { ascending:false }),
+    sb.from('wagers').select('*').order('created_at', { ascending:false }),
+    sb.from('wager_parties').select('*'),
   ]);
 
   MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, pic:p.avatar_url }));
@@ -791,6 +904,16 @@ async function loadAll(){
   MYVOTE = MYID ? (TRIP_VOTES.find(v=>v.by===MYID) || null) : null;
   PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, course:p.course||'', a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B') }));
   SCORES = (sc.data||[]).map(s=>({ id:s.id, by:s.profile_id, score:s.score, label:s.label, course:s.course||'' }));
+
+  ACCOLADES = (acc.data||[]).map(a=>({ id:a.id, pid:a.profile_id, title:a.title||'', note:a.note||'', by:a.created_by }));
+
+  const partyByWager = {};
+  (wp.data||[]).forEach(p=>{ (partyByWager[p.wager_id]=partyByWager[p.wager_id]||[]).push({ id:p.id, pid:p.profile_id, accepted:!!p.accepted, outcomeOk:!!p.outcome_ok }); });
+  WAGERS = (wg.data||[]).map(w=>({
+    id:w.id, by:w.created_by, amount:w.amount, terms:w.terms, status:w.status||'unaccepted',
+    proposedWinner:w.proposed_winner_id, winnerId:w.winner_id, isPush:!!w.is_push,
+    parties: partyByWager[w.id]||[]
+  }));
 }
 async function reload(){ await loadAll(); renderAll(); }
 
@@ -844,6 +967,11 @@ function startSlideshow(n){
     slides[i].classList.add('on'); if(dots[i]) dots[i].classList.add('on');
   }, 3800);
 }
+function randomGallery(n){
+  const a=[...GALLERY];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a.slice(0, n);
+}
 function renderClubhouse(){
   const el = $("#clubhouse");
   if(TRIPS.length===0 && DESTS.length===0){ el.innerHTML = emptyWelcome(); return; }
@@ -853,7 +981,7 @@ function renderClubhouse(){
   const aceCount = TRIPS.reduce((s,t)=> s + (t.aces?t.aces.length:0), 0);
   const lead = voteLeader();
   const tlc = teamLowballChampion();
-  const recent = GALLERY.slice(0,3);
+  const recent = randomGallery(6);
   el.innerHTML = `
     <div class="grid g2">
       <div class="card hero">
@@ -894,7 +1022,7 @@ function renderClubhouse(){
     ${ recent.length ? `
     <div class="card" style="margin-top:16px">
       <div class="pad">
-        <p class="eyebrow">From the gallery · latest</p>
+        <p class="eyebrow">From the gallery</p>
         <div class="slideshow" id="chSlides">
           ${recent.map((g,i)=>`<figure class="slide${i===0?' on':''}"><img src="${esc(g.url)}" alt="${esc(g.caption||'')}" loading="lazy">${g.caption?`<figcaption>${esc(g.caption)}</figcaption>`:''}</figure>`).join('')}
           ${recent.length>1?`<div class="dots">${recent.map((_,i)=>`<span class="dot${i===0?' on':''}"></span>`).join('')}</div>`:''}
@@ -1028,14 +1156,42 @@ function buildStandings(){
   });
   return Object.values(p).sort((a,b)=> b.wins-a.wins || b.aces-a.aces || (a.best??999)-(b.best??999));
 }
+function accoladesCard(){
+  const items = ACCOLADES.map(a=>{
+    const m = MEMBERS.find(x=>x.id===a.pid);
+    const name = m ? m.name : 'Former member';
+    return `<div class="acco">
+      ${avatarHTML(m,46)}
+      <div class="acco-body">
+        ${a.title?`<div class="acco-title">${esc(a.title)}</div>`:''}
+        <div class="acco-name">${esc(name)}</div>
+        ${a.note?`<div class="acco-note">${esc(a.note)}</div>`:''}
+      </div>
+      <button class="btn ghost tiny acco-edit admin-only" onclick="openAccModal('${a.id}')">Edit</button>
+    </div>`;
+  }).join('');
+  return `<div class="card" style="margin-top:16px">
+    <div class="pad">
+      <div class="acco-head">
+        <p class="eyebrow" style="margin:0;color:var(--brass-deep)">Society Accolades · the unofficial record</p>
+        <button class="btn tiny admin-only" onclick="openAccModal()">+ Add an accolade</button>
+      </div>
+      ${ACCOLADES.length ? `<div class="acco-list">${items}</div>`
+        : `<p class="sub" style="margin-top:8px">No accolades yet. ${isAdmin()?'Use “Add an accolade” to immortalise a hole‑in‑one, the most beers sunk on the back nine, or an unfortunate ER visit.':'Admins can add memorable feats here — hole‑in‑ones, beers sunk, ER visits and all.'}</p>`}
+    </div>
+  </div>`;
+}
 function renderFame(){
   const el = $("#fameBody");
   const st = buildStandings();
   const allAces = [];
   sortedTrips().forEach(t=> (t.aces||[]).forEach(a=> allAces.push({...a, year:t.year, loc:t.loc})));
-  if(!st.length){ el.innerHTML = `<div class="empty"><h3>No legends yet</h3><p>Once you log trips with champions and scorecards, lifetime standings and the ace wall fill in automatically.</p><div class="row"><button class="btn" onclick="openTripModal()">Add a trip</button></div></div>`; return; }
+  if(!st.length && !allAces.length && !ACCOLADES.length){
+    el.innerHTML = `<div class="empty"><h3>No legends yet</h3><p>Once you log trips with champions and scorecards, lifetime standings and the ace wall fill in automatically. Admins can also add society accolades by hand.</p><div class="row"><button class="btn admin-only" onclick="openTripModal()">Add a trip</button><button class="btn ghost admin-only" onclick="openAccModal()">Add an accolade</button></div></div>`;
+    return;
+  }
   const medal = i => ["🥇","🥈","🥉"][i] || "";
-  el.innerHTML = `
+  const standingsCard = st.length ? `
     <div class="card">
       <div class="pad">
         <p class="eyebrow">Career standings · ranked by titles</p>
@@ -1050,15 +1206,227 @@ function renderFame(){
           <td class="r">${r.spoons||""}</td>
         </tr>`).join("")}</tbody></table>
       </div>
-    </div>
-    ${allAces.length?`
+    </div>` : "";
+  const aceCard = allAces.length?`
     <div class="card" style="margin-top:16px">
       <div class="pad">
         <p class="eyebrow" style="color:var(--flag)">The Ace Wall · holes&#8209;in&#8209;one</p>
         <div class="aces">${allAces.map(a=>`<div class="ace"><span class="pin">🚩</span><div class="txt"><b>${esc(a.player)}</b><small>${a.hole?"Hole "+esc(a.hole):""}${a.course?" · "+esc(a.course):""} · ${esc(a.loc||"")} ${esc(a.year||"")}</small></div></div>`).join("")}</div>
       </div>
-    </div>`:""}
-  `;
+    </div>`:"";
+  el.innerHTML = standingsCard + aceCard + accoladesCard();
+}
+
+/* ---- accolade modal (admin only) ---- */
+let editingAccolade = null;
+function openAccModal(id){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  editingAccolade = id || null;
+  const a = id ? ACCOLADES.find(x=>x.id===id) : null;
+  $("#accTitle").textContent = a ? "Edit accolade" : "Add an accolade";
+  $("#acc_delete").style.display = a ? "inline-block" : "none";
+  const sel = $("#acc_member");
+  sel.innerHTML = `<option value="">— select a member —</option>` +
+    MEMBERS.map(m=>`<option value="${m.id}" ${a&&a.pid===m.id?'selected':''}>${esc(m.name)}</option>`).join("");
+  $("#acc_headline").value = a?a.title:"";
+  $("#acc_note").value = a?a.note:"";
+  openModal("accScrim");
+}
+async function saveAccolade(){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  const pid = $("#acc_member").value;
+  if(!pid){ toast("Pick the member"); return; }
+  const note = $("#acc_note").value.trim();
+  if(!note){ toast("Add a comment on what they accomplished"); return; }
+  const row = { profile_id:pid, title:$("#acc_headline").value.trim(), note };
+  try{
+    if(editingAccolade){ const { error }=await sb.from('accolades').update(row).eq('id',editingAccolade); if(error) throw error; }
+    else { row.created_by=MYID; const { error }=await sb.from('accolades').insert(row); if(error) throw error; }
+  }catch(e){ toast(friendly(e)); return; }
+  const was=!!editingAccolade;
+  closeModal('accScrim'); await reload(); toast(was?"Accolade updated":"Accolade added");
+}
+async function deleteAccolade(){
+  if(!editingAccolade) return;
+  const { error }=await sb.from('accolades').delete().eq('id',editingAccolade);
+  if(error){ toast(friendly(error)); return; }
+  closeModal('accScrim'); await reload(); toast("Accolade removed");
+}
+
+/* ============================================================
+   WAGERS
+   ============================================================ */
+const wagerParty = (w, pid)=> w.parties.find(p=>p.pid===pid) || null;
+const iAmParty = (w)=> !!wagerParty(w, MYID);
+function wagerWinnerName(w){
+  if(w.isPush) return "Push — bets off";
+  const id = w.winnerId || w.proposedWinner;
+  return id ? nameOf(id) : "—";
+}
+
+/* ---- create wager ---- */
+function openWagerModal(){
+  if(!isAuthed()){ openAuth('signin'); return; }
+  $("#wg_amount").value = '';
+  $("#wg_terms").value = '';
+  const others = MEMBERS.filter(m=>m.id!==MYID);
+  const box = $("#wg_members");
+  box.innerHTML = others.length
+    ? others.map(m=>`<label class="wg-check"><input type="checkbox" value="${m.id}">${avatarHTML(m,28)}<span>${esc(m.name)}</span></label>`).join('')
+    : `<p class="sub" style="margin:0">No other members yet — someone needs to join before you can wager.</p>`;
+  openModal('wagerScrim');
+}
+async function saveWager(){
+  if(!isAuthed()){ openAuth('signin'); return; }
+  const picks = [...document.querySelectorAll('#wg_members input:checked')].map(i=>i.value);
+  if(!picks.length){ toast("Pick at least one member to wager against"); return; }
+  const amount = intOrNull($("#wg_amount").value);
+  if(amount==null || isNaN(amount) || amount<=0){ toast("Enter a dollar amount"); return; }
+  const terms = $("#wg_terms").value.trim();
+  if(!terms){ toast("Spell out the terms of the bet"); return; }
+  try{
+    const { data, error }=await sb.from('wagers').insert({ created_by:MYID, amount, terms, status:'unaccepted' }).select('id').single();
+    if(error) throw error;
+    const wid = data.id;
+    const rows = [{ wager_id:wid, profile_id:MYID, accepted:true }]
+      .concat(picks.map(pid=>({ wager_id:wid, profile_id:pid, accepted:false })));
+    const { error:pe }=await sb.from('wager_parties').insert(rows);
+    if(pe) throw pe;
+  }catch(e){ toast(friendly(e)); return; }
+  closeModal('wagerScrim'); await reload(); go('wagers'); toast("Wager proposed");
+}
+async function acceptWager(id){
+  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  const mine = wagerParty(w, MYID); if(!mine){ toast("You're not part of this wager"); return; }
+  try{
+    let { error }=await sb.from('wager_parties').update({ accepted:true }).eq('id', mine.id); if(error) throw error;
+    const everyoneElse = w.parties.filter(p=>p.pid!==MYID);
+    if(everyoneElse.every(p=>p.accepted)){
+      ({ error }=await sb.from('wagers').update({ status:'accepted' }).eq('id', id)); if(error) throw error;
+    }
+  }catch(e){ toast(friendly(e)); return; }
+  await reload(); toast("You're in");
+}
+async function cancelWager(id){
+  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  if(w.by!==MYID){ toast("Only the member who proposed it can cancel"); return; }
+  if(!confirm("Cancel this wager? It will be removed for everyone.")) return;
+  const { error }=await sb.from('wagers').delete().eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); toast("Wager cancelled");
+}
+
+/* ---- settle / outcome ---- */
+let outcomeWager = null;
+function openOutcomeModal(id){
+  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  if(!iAmParty(w)){ toast("Only members in the wager can settle it"); return; }
+  outcomeWager = id;
+  const sel = $("#oc_winner");
+  sel.innerHTML = w.parties.map(p=>`<option value="${p.pid}">${esc(nameOf(p.pid))}</option>`).join('')
+    + `<option value="__push">Push — nobody wins, bets off</option>`;
+  openModal('outcomeScrim');
+}
+async function submitOutcome(){
+  const id = outcomeWager; const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  const v = $("#oc_winner").value;
+  const mine = wagerParty(w, MYID); if(!mine) return;
+  const patch = v==='__push' ? { is_push:true, proposed_winner_id:null } : { is_push:false, proposed_winner_id:v };
+  try{
+    let { error }=await sb.from('wagers').update(patch).eq('id', id); if(error) throw error;
+    ({ error }=await sb.from('wager_parties').update({ outcome_ok:false }).eq('wager_id', id)); if(error) throw error;
+    ({ error }=await sb.from('wager_parties').update({ outcome_ok:true }).eq('id', mine.id)); if(error) throw error;
+  }catch(e){ toast(friendly(e)); return; }
+  closeModal('outcomeScrim'); await reload(); toast("Outcome proposed — waiting on the others");
+}
+async function confirmOutcome(id){
+  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  const mine = wagerParty(w, MYID); if(!mine) return;
+  try{
+    let { error }=await sb.from('wager_parties').update({ outcome_ok:true }).eq('id', mine.id); if(error) throw error;
+    const everyoneElse = w.parties.filter(p=>p.pid!==MYID);
+    if(everyoneElse.every(p=>p.outcomeOk)){
+      const fin = w.isPush ? { status:'completed', winner_id:null } : { status:'completed', winner_id:w.proposedWinner };
+      ({ error }=await sb.from('wagers').update(fin).eq('id', id)); if(error) throw error;
+    }
+  }catch(e){ toast(friendly(e)); return; }
+  await reload(); toast("Confirmed");
+}
+async function disputeOutcome(id){
+  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  if(!iAmParty(w)) return;
+  try{
+    let { error }=await sb.from('wagers').update({ proposed_winner_id:null, is_push:false }).eq('id', id); if(error) throw error;
+    ({ error }=await sb.from('wager_parties').update({ outcome_ok:false }).eq('wager_id', id)); if(error) throw error;
+  }catch(e){ toast(friendly(e)); return; }
+  await reload(); toast("Outcome cleared — propose again");
+}
+
+/* ---- render ---- */
+function wagerPartyChips(w, mode){
+  return `<div class="wg-parties">` + w.parties.map(p=>{
+    const m = MEMBERS.find(x=>x.id===p.pid);
+    const flag = mode==='outcome' ? p.outcomeOk : p.accepted;
+    const tip = mode==='outcome' ? (flag?'agreed':'not yet') : (p.pid===w.by?'proposer':(flag?'accepted':'pending'));
+    return `<span class="wg-chip ${flag?'ok':'wait'}">${avatarHTML(m,24)}<span class="wg-cn">${esc(nameOf(p.pid))}</span><i>${tip}</i></span>`;
+  }).join('') + `</div>`;
+}
+function wagerCard(w){
+  const me = ME();
+  const mine = me ? wagerParty(w, me.id) : null;
+  const statusLabel = { unaccepted:'Unaccepted', accepted:'Accepted', completed:'Completed' }[w.status] || w.status;
+  let body = '', actions = '';
+  if(w.status==='unaccepted'){
+    body = wagerPartyChips(w, 'accept');
+    if(mine && !mine.accepted){ actions += `<button class="btn tiny" onclick="acceptWager('${w.id}')">Accept the bet</button>`; }
+    else if(mine && mine.accepted){ actions += `<span class="wg-note">Waiting on the others to accept…</span>`; }
+    if(me && w.by===me.id){ actions += `<button class="btn ghost tiny" onclick="cancelWager('${w.id}')">Cancel</button>`; }
+  } else if(w.status==='accepted'){
+    const proposed = w.isPush || w.proposedWinner;
+    body = wagerPartyChips(w, proposed ? 'outcome' : 'accept');
+    if(proposed){
+      const who = w.isPush ? 'a push (no winner)' : `${esc(nameOf(w.proposedWinner))} won`;
+      body += `<div class="wg-proposal">Proposed outcome: <b>${who}</b></div>`;
+      if(mine && !mine.outcomeOk){
+        actions += `<button class="btn tiny" onclick="confirmOutcome('${w.id}')">Confirm</button>`;
+        actions += `<button class="btn ghost tiny" onclick="disputeOutcome('${w.id}')">Dispute</button>`;
+      } else if(mine){ actions += `<span class="wg-note">Waiting on the others to confirm…</span>`; }
+    } else if(mine){
+      actions += `<button class="btn tiny" onclick="openOutcomeModal('${w.id}')">Settle up</button>`;
+    }
+  } else {
+    body = `<div class="wg-result">${w.isPush?'🤝 Push — bets off, nobody collects.':`🏆 <b>${esc(wagerWinnerName(w))}</b> won the wager.`}</div>`;
+  }
+  return `<div class="wg-card s-${w.status}">
+    <div class="wg-top">
+      <div class="wg-amount">${money(w.amount)}</div>
+      <span class="wg-badge b-${w.status}">${statusLabel}</span>
+    </div>
+    <div class="wg-terms">${esc(w.terms)}</div>
+    <div class="wg-by">Proposed by ${esc(nameOf(w.by))}</div>
+    ${body}
+    ${actions?`<div class="wg-actions">${actions}</div>`:''}
+  </div>`;
+}
+function renderWagers(){
+  const acts = $("#wagerActions");
+  if(acts) acts.innerHTML = isAuthed()
+    ? `<button class="btn" onclick="openWagerModal()">+ Create a wager</button>`
+    : `<button class="btn" onclick="openAuth('signin')">Sign in to wager</button>`;
+  const body = $("#wagerBody"); if(!body) return;
+  if(!WAGERS.length){
+    body.innerHTML = `<div class="empty"><h3>No wagers on the book</h3><p>Settle the eternal questions with cold hard cash. Propose a bet, name who's in, set the stakes and the terms — they confirm, and it's on. ${isAuthed()?'':'Sign in to start one.'}</p>${isAuthed()?`<div class="row"><button class="btn" onclick="openWagerModal()">Create the first wager</button></div>`:''}</div>`;
+    return;
+  }
+  const groups = {
+    accepted: WAGERS.filter(w=>w.status==='accepted'),
+    unaccepted: WAGERS.filter(w=>w.status==='unaccepted'),
+    completed: WAGERS.filter(w=>w.status==='completed'),
+  };
+  const section = (title, list)=> list.length ? `<div class="wg-section"><p class="eyebrow" style="color:var(--brass)">${title}</p><div class="wg-grid">${list.map(wagerCard).join('')}</div></div>` : '';
+  body.innerHTML = section('Active wagers', groups.accepted)
+    + section('Awaiting acceptance', groups.unaccepted)
+    + section('Settled', groups.completed);
 }
 
 /* ============================================================
@@ -1889,7 +2257,7 @@ function renderGallery(){
 /* ============================================================
    Render all + boot
    ============================================================ */
-function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); }
+function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); }
 
 function connState(ok){
   const d=$("#syncDot"), t=$("#syncText");
