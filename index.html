@@ -297,13 +297,23 @@
   body.role-admin .admin-only{display:inline-block}
 
   .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px}
-  .mcard{border:1px solid var(--rule);border-radius:10px;padding:18px 16px;background:rgba(255,255,255,.18);
-    display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;color:var(--ink)}
-  .mcard .avatar{margin-bottom:3px}
-  .mcard .mname{font-weight:700;font-size:16px}
-  .mcard .mmeta{font-size:13px;color:var(--ink-soft);font-family:"Spline Sans Mono",monospace}
-  .mcard .mrole{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass-deep);font-weight:700}
+  .mcard{border:1px solid var(--rule);border-top:4px solid var(--brass);border-radius:12px;padding:20px 16px 18px;
+    background:var(--paper);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;color:var(--ink)}
+  .mcard .avatar{margin-bottom:4px}
+  .mcard .mname{font-family:"Bodoni Moda",serif;font-weight:700;font-size:19px;color:var(--brass-deep);line-height:1.15}
+  .mcard .mmeta{font-size:12px;color:var(--ink-soft);font-family:"Spline Sans Mono",monospace}
+  .mcard .mrole{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fairway);font-weight:700}
   .mcard .you{font-size:11px;color:var(--fairway);font-weight:700}
+  .mcard .mstat{margin-top:6px;display:flex;flex-direction:column;align-items:center;gap:1px;
+    background:rgba(76,138,90,.1);border:1px solid rgba(76,138,90,.3);border-radius:10px;padding:7px 14px}
+  .mcard .mstat .mtot{font-family:"Bodoni Moda",serif;font-weight:700;font-size:22px;color:var(--fairway)}
+  .mcard .mstat .ml{font-family:"Spline Sans Mono",monospace;font-size:10px;letter-spacing:.05em;color:var(--ink-soft)}
+  .mcard .mstat.none{font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-soft);background:transparent;border:0;padding:4px 0}
+  .mcard .mrank{font-family:"Spline Sans Mono",monospace;font-size:12px;font-weight:600;color:var(--brass-deep)}
+  .myrounds{display:flex;flex-direction:column;gap:6px}
+  .roundrow{display:flex;align-items:center;gap:10px;border:1px solid var(--rule);border-radius:8px;padding:7px 11px;background:var(--paper)}
+  .roundrow .rs{font-family:"Bodoni Moda",serif;font-weight:700;font-size:17px;color:var(--fairway);min-width:34px}
+  .roundrow .rl{flex:1;font-size:13px;color:var(--ink-soft)}
 
   .picrow{display:flex;align-items:center;gap:14px;margin-bottom:16px}
   .picprev{width:66px;height:66px;border-radius:50%;background:var(--brass);color:#2a200a;display:flex;
@@ -416,8 +426,9 @@
       <div class="head-row">
         <div><p class="eyebrow" style="color:var(--brass)">Every trip, every champion</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">The Record</h2></div>
-        <button class="btn admin-only" onclick="openTripModal()">+ Add a trip</button>
+        <div id="recordActions"></div>
       </div>
+      <div id="leaderboardBody"></div>
       <div id="recordList"></div>
     </section>
 
@@ -594,13 +605,16 @@
 <!-- ===== SCORE MODAL ===== -->
 <div class="scrim" id="scoreScrim">
   <div class="modal">
-    <h3>Log my score</h3>
-    <p class="sub">Pick a trip and enter your score. Only your own line is updated.</p>
-    <div class="field"><label class="f">Trip</label><select id="sc_trip"></select></div>
-    <div class="field"><label class="f">Your score</label><input id="sc_score" type="number" placeholder="78"></div>
+    <h3>Log a score</h3>
+    <p class="sub">Add a round. Your cumulative total updates the leaderboard automatically — lowest total leads.</p>
+    <div class="row2">
+      <div class="field"><label class="f">Score</label><input id="sc_score" type="number" min="1" placeholder="77"></div>
+      <div class="field"><label class="f">Label (optional)</label><input id="sc_label" placeholder="Bend · Day 1"></div>
+    </div>
+    <div id="sc_mine"></div>
     <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
-      <button class="btn ghost" onclick="closeModal('scoreScrim')">Cancel</button>
-      <button class="btn" onclick="saveMyScore()">Save score</button>
+      <button class="btn ghost" onclick="closeModal('scoreScrim')">Done</button>
+      <button class="btn" onclick="addMyScore()">Add round</button>
     </div></div>
   </div>
 </div>
@@ -686,7 +700,7 @@ const GALLERY_TRIPS = ["Myrtle Beach - 2024", "St. George - 2025", "Bend - 2026"
 
 /* ---- state (same shapes the render layer already expects) ---- */
 let TRIPS = [], DESTS = [], VOTES = {}, MINE = {}, MEMBERS = [], GALLERY = [], DLIKES = {}, DMINE = {}, DCOMMENTS = {};
-let VOTE_OPTIONS = [], TRIP_VOTES = [], MYVOTE = null, PAIRINGS = [];
+let VOTE_OPTIONS = [], TRIP_VOTES = [], MYVOTE = null, PAIRINGS = [], SCORES = [];
 const ANY_PREV = "Any Previous Trip";
 let MYID = null;
 
@@ -720,7 +734,7 @@ async function loadAll(){
   const { data:{ session } } = await sb.auth.getSession();
   MYID = session ? session.user.id : null;
 
-  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs] = await Promise.all([
+  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc] = await Promise.all([
     sb.from('profiles').select('*').order('created_at'),
     sb.from('trips').select('*'),
     sb.from('results').select('*'),
@@ -733,6 +747,7 @@ async function loadAll(){
     sb.from('vote_options').select('*').order('created_at'),
     sb.from('trip_votes').select('*'),
     sb.from('pairings').select('*').order('created_at'),
+    sb.from('scores').select('*').order('created_at'),
   ]);
 
   MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, pic:p.avatar_url }));
@@ -763,6 +778,7 @@ async function loadAll(){
   TRIP_VOTES = (tvotes.data||[]).map(v=>({ id:v.id, by:v.profile_id, option:v.option_label, dest:v.dest_id }));
   MYVOTE = MYID ? (TRIP_VOTES.find(v=>v.by===MYID) || null) : null;
   PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B') }));
+  SCORES = (sc.data||[]).map(s=>({ id:s.id, by:s.profile_id, score:s.score, label:s.label }));
 }
 async function reload(){ await loadAll(); renderAll(); }
 
@@ -866,9 +882,49 @@ function scoreTable(t){
 /* ============================================================
    THE RECORD
    ============================================================ */
+function scoreboard(){
+  const rows = MEMBERS.map(m=>{
+    const rounds = SCORES.filter(s=>s.by===m.id);
+    const total = rounds.reduce((a,s)=> a + (Number(s.score)||0), 0);
+    return { id:m.id, name:m.name, pic:m.pic, count:rounds.length, total };
+  });
+  const ranked = rows.filter(r=>r.count>0).sort((a,b)=> a.total-b.total || a.count-b.count);
+  return { ranked, all:rows };
+}
+function myRank(pid){
+  const { ranked } = scoreboard();
+  const i = ranked.findIndex(r=>r.id===pid);
+  return i<0 ? null : { rank:i+1, of:ranked.length, total:ranked[i].total, count:ranked[i].count };
+}
+function renderLeaderboard(){
+  const el=$("#leaderboardBody"); if(!el) return;
+  const { ranked } = scoreboard();
+  if(!ranked.length){
+    el.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="pad">
+      <p class="eyebrow">Cumulative leaderboard · lowest total leads</p>
+      <p class="sub" style="margin-top:4px">No rounds logged yet. ${isAuthed()?'Tap “Log a score” to get on the board.':'Sign in and log a score to get on the board.'}</p>
+    </div></div>`;
+    return;
+  }
+  const medal = i => ["🥇","🥈","🥉"][i] || `${i+1}`;
+  const me = ME();
+  el.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="pad">
+    <p class="eyebrow">Cumulative leaderboard · lowest total leads</p>
+    <table class="hof" style="margin-top:10px"><thead><tr><th></th><th>Player</th><th class="r">Rounds</th><th class="r">Total</th></tr></thead>
+    <tbody>${ranked.map((r,i)=>`<tr${me&&me.id===r.id?' style="background:rgba(196,154,74,.1)"':''}>
+      <td class="medal">${medal(i)}</td>
+      <td class="who">${esc(r.name)}${me&&me.id===r.id?' <span style="color:var(--fairway);font-size:11px;font-weight:700">· you</span>':''}</td>
+      <td class="r">${r.count}</td>
+      <td class="r" style="font-weight:700;color:var(--ink)">${r.total}</td>
+    </tr>`).join('')}</tbody></table>
+  </div></div>`;
+}
 function renderRecord(){
+  const acts = $("#recordActions");
+  if(acts) acts.innerHTML = `${isAuthed()?`<button class="btn" onclick="openScoreModal()">+ Log a score</button> `:''}${isAdmin()?`<button class="btn ghost" onclick="openTripModal()">+ Add a trip</button>`:''}`;
+  renderLeaderboard();
   const list = $("#recordList");
-  if(!TRIPS.length){ list.innerHTML = `<div class="empty"><h3>No trips on the books</h3><p>Log the trips you've already taken to build out the record — years, destinations, champions and scores.</p><div class="row"><button class="btn" onclick="openTripModal()">Add a trip</button><button class="btn ghost" onclick="loadSample()">Load sample data</button></div></div>`; return; }
+  if(!TRIPS.length){ list.innerHTML = `<div class="empty"><h3>No trips on the books</h3><p>Log the trips you've already taken to build out the record — years, destinations, champions and scores.</p><div class="row"><button class="btn admin-only" onclick="openTripModal()">Add a trip</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`; return; }
   list.innerHTML = sortedTrips().map(t=>{
     const tags = [];
     if(t.costPerDay!=null && t.costPerDay!=="") tags.push(`<span class="tag">${money(t.costPerDay)}<b> /day</b></span>`);
@@ -1491,11 +1547,12 @@ function renderAuth(){
         <div><label class="pickbtn" for="jn_file">Choose photo</label>
         <input id="jn_file" type="file" accept="image/*" style="display:none" onchange="readPicFile(this,'jn_prev')">
         <div class="secnote" style="margin-top:8px">Profile photo is optional.</div></div></div>
-      <div class="field"><label class="f">Name</label><input id="jn_name" placeholder="Your name or team"></div>
+      <div class="field"><label class="f">Name <span style="color:var(--flag)">*</span></label><input id="jn_name" placeholder="Your name or team"></div>
       <div class="row2">
-        <div class="field"><label class="f">Age</label><input id="jn_age" type="number"></div>
-        <div class="field"><label class="f">Handicap</label><input id="jn_hcap" placeholder="e.g. 12.4"></div>
+        <div class="field"><label class="f">Age <span style="color:var(--flag)">*</span></label><input id="jn_age" type="number"></div>
+        <div class="field"><label class="f">Handicap <span style="color:var(--flag)">*</span></label><input id="jn_hcap" placeholder="e.g. 12.4"></div>
       </div>
+      <div class="secnote">Name, age and handicap are required.</div>
       <div class="secnote" style="margin-top:14px">Used only to sign back in:</div>
       <div class="field"><label class="f">Email</label><input id="jn_email" type="email" placeholder="you@email.com"></div>
       <div class="field"><label class="f">Password (6+ characters)</label><input id="jn_pw" type="password"></div>
@@ -1515,11 +1572,12 @@ async function doSignIn(){
 }
 async function doJoin(){
   const name=$("#jn_name").value.trim(); if(!name){ toast("Add your name"); return; }
+  const age=intOrNull($("#jn_age").value); if(age==null||isNaN(age)){ toast("Add your age"); return; }
+  const hcap=$("#jn_hcap").value.trim(); if(!hcap){ toast("Add your handicap"); return; }
   const email=$("#jn_email").value.trim(); if(!email){ toast("Add your email"); return; }
   const pw=$("#jn_pw").value; if(pw.length<6){ toast("Password must be at least 6 characters"); return; }
   const pin=($("#jn_pin")?$("#jn_pin").value:"").trim(); if(pin!==JOIN_PIN){ toast("Incorrect group PIN — ask an admin"); return; }
   const photo=pendingPic;
-  const hcap=$("#jn_hcap").value.trim()||null, age=intOrNull($("#jn_age").value);
   const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ data:{ name } } });
   if(error){ toast(friendly(error)); return; }
   if(!data.session){
@@ -1564,7 +1622,9 @@ function openProfile(id){
 async function saveProfile(){
   const m=MEMBERS.find(x=>x.id===editingMemberId); if(!m) return;
   const name=$("#pf_name").value.trim(); if(!name){ toast("Name can't be blank"); return; }
-  const patch={ name, handicap:$("#pf_hcap").value.trim()||null, age:intOrNull($("#pf_age").value) };
+  const age=intOrNull($("#pf_age").value); if(age==null||isNaN(age)){ toast("Age can't be blank"); return; }
+  const hcap=$("#pf_hcap").value.trim(); if(!hcap){ toast("Handicap can't be blank"); return; }
+  const patch={ name, handicap:hcap, age };
   if(pendingPic===null && m.pic){ patch.avatar_url=null; }
   else if(pendingPic && pendingPic!==m.pic){ const url=await uploadAvatar(pendingPic, m.id); if(url) patch.avatar_url=url; }
   if(isAdmin()){
@@ -1591,7 +1651,7 @@ async function removeMember(){
 function renderMembers(){
   const body=$("#membersBody"), acts=$("#memberActions"); if(!body) return;
   const me=ME();
-  acts.innerHTML = me ? `<button class="btn" onclick="openScoreModal()">Log my score</button>`
+  acts.innerHTML = me ? `<button class="btn" onclick="openProfile('${me.id}')">Edit my profile</button>`
                       : `<button class="btn" onclick="openAuth('join')">Join the society</button>`;
   if(!MEMBERS.length){
     body.innerHTML = `<div class="empty"><h3>No members yet</h3><p>Create the first account to get started, then your group can join and set up profiles.</p><div class="row"><button class="btn" onclick="openAuth('join')">Create an account</button></div></div>`;
@@ -1599,41 +1659,51 @@ function renderMembers(){
   }
   body.innerHTML = `<div class="mgrid">` + MEMBERS.map(m=>{
     const canEdit = isAdmin() || (me && me.id===m.id);
+    const r = myRank(m.id);
+    const stat = r
+      ? `<div class="mstat"><span class="mtot">${r.total}</span><span class="ml">total · ${r.count} round${r.count===1?'':'s'}</span></div>
+         <div class="mrank">${["🥇","🥈","🥉"][r.rank-1]||('#'+r.rank)} of ${r.of}</div>`
+      : `<div class="mstat none">No rounds logged yet</div>`;
     return `<div class="mcard">${avatarHTML(m,76)}
       <div class="mname">${esc(m.name)}</div>
       ${m.role==='admin'?`<div class="mrole">Admin</div>`:``}
-      <div class="mmeta">${m.handicap?('Hcp '+esc(m.handicap)):'Hcp \u2014'}${m.age?(' \u00b7 '+esc(m.age)+'y'):''}</div>
+      <div class="mmeta">Hcp ${m.handicap?esc(m.handicap):'\u2014'}${m.age?(' \u00b7 '+esc(m.age)+'y'):''}</div>
+      ${stat}
       ${me&&me.id===m.id?`<div class="you">This is you</div>`:``}
       ${canEdit?`<button class="btn ghost tiny" onclick="openProfile('${m.id}')">Edit</button>`:``}
     </div>`;
   }).join("") + `</div>`;
 }
 
-/* ---- member score logging ---- */
+/* ---- personal score logging (feeds the cumulative leaderboard) ---- */
 function openScoreModal(){
   if(!isAuthed()){ openAuth('signin'); return; }
-  if(!TRIPS.length){ toast("No trips yet — your admin can add one"); return; }
-  const sel=$("#sc_trip");
-  sel.innerHTML = sortedTrips().map(t=>`<option value="${t.id}">${esc((t.year||'')+' \u00b7 '+(t.loc||'Trip'))}</option>`).join("");
-  syncScoreField(); sel.onchange = syncScoreField;
+  $("#sc_score").value=''; $("#sc_label").value='';
+  renderMyScores();
   openModal('scoreScrim');
 }
-function syncScoreField(){
-  const t=TRIPS.find(x=>x.id===$("#sc_trip").value); const me=ME(); let cur="";
-  if(t&&me){ const r=(t.results||[]).find(r=> r.profile_id===me.id || (r.player||'').trim().toLowerCase()===me.name.trim().toLowerCase()); if(r) cur=r.score; }
-  $("#sc_score").value=cur;
+function renderMyScores(){
+  const me=ME(); const el=$("#sc_mine"); if(!el||!me) return;
+  const mine=SCORES.filter(s=>s.by===me.id);
+  if(!mine.length){ el.innerHTML=`<p class="secnote" style="margin-top:10px">No rounds logged yet.</p>`; return; }
+  const total=mine.reduce((a,s)=> a+(Number(s.score)||0), 0);
+  el.innerHTML = `<div class="f" style="margin:12px 0 6px">Your rounds · total ${total}</div>`
+    + `<div class="myrounds">` + mine.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(s.label||'Round')}</span><button class="cmt-del" title="Delete" onclick="deleteMyScore('${s.id}')">&times;</button></div>`).join('') + `</div>`;
 }
-async function saveMyScore(){
+async function addMyScore(){
   const me=ME(); if(!me) return;
-  const t=TRIPS.find(x=>x.id===$("#sc_trip").value); if(!t) return;
-  const sc=$("#sc_score").value.trim();
-  const mine=(t.results||[]).find(r=> r.profile_id===me.id);
-  try{
-    if(sc===""){ if(mine && mine._id){ const { error }=await sb.from('results').delete().eq('id',mine._id); if(error) throw error; } }
-    else if(mine && mine._id){ const { error }=await sb.from('results').update({ score:Number(sc), player_name:me.name }).eq('id',mine._id); if(error) throw error; }
-    else { const { error }=await sb.from('results').insert({ trip_id:t.id, profile_id:me.id, player_name:me.name, score:Number(sc) }); if(error) throw error; }
-  }catch(e){ toast(friendly(e)); return; }
-  closeModal('scoreScrim'); await reload(); toast("Score saved");
+  const sc=intOrNull($("#sc_score").value);
+  if(sc==null||isNaN(sc)){ toast("Enter a score"); return; }
+  const label=($("#sc_label").value||'').trim()||null;
+  const { error }=await sb.from('scores').insert({ profile_id:me.id, score:sc, label });
+  if(error){ toast(friendly(error)); return; }
+  $("#sc_score").value=''; $("#sc_label").value='';
+  await reload(); renderMyScores(); toast("Round logged");
+}
+async function deleteMyScore(id){
+  const { error }=await sb.from('scores').delete().eq('id',id);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); renderMyScores(); toast("Round removed");
 }
 
 /* ============================================================
