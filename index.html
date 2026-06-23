@@ -378,6 +378,7 @@
   .vs-medal .swords{font-size:26px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
   .vs-medal .vs{font-family:"Bodoni Moda",serif;font-weight:700;font-size:22px;color:var(--brass);letter-spacing:.06em}
   .vs-tag{grid-column:1/-1;text-align:center;font-size:13px;font-style:italic;color:var(--mut-on-pine);margin-top:2px}
+  .vs-course{grid-column:1/-1;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--brass);font-weight:600;margin-bottom:2px}
   .vs-del{position:absolute;top:8px;right:10px;border:0;background:transparent;color:var(--mut-on-pine);font-size:20px;line-height:1;cursor:pointer}
   .vs-del:hover{color:var(--flag)}
   @media(max-width:560px){ .versus{grid-template-columns:1fr} .vs-medal{flex-direction:row;gap:10px;padding:4px 0} }
@@ -609,7 +610,7 @@
     <p class="sub">Add a round. Your cumulative total updates the leaderboard automatically — lowest total leads.</p>
     <div class="row2">
       <div class="field"><label class="f">Score</label><input id="sc_score" type="number" min="1" placeholder="77"></div>
-      <div class="field"><label class="f">Label (optional)</label><input id="sc_label" placeholder="Bend · Day 1"></div>
+      <div class="field"><label class="f">Course</label><select id="sc_course"></select></div>
     </div>
     <div id="sc_mine"></div>
     <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
@@ -650,6 +651,7 @@
       <div class="field"><label class="f">Trip</label><input id="pr_trip" list="pr_trips" placeholder="Bend - 2026" oninput="onDayChange()"><datalist id="pr_trips"></datalist></div>
       <div class="field"><label class="f">Day</label><input id="pr_day" type="number" min="1" value="1" oninput="onDayChange()"></div>
     </div>
+    <div class="field"><label class="f">Course played that day</label><input id="pr_course" placeholder="e.g. Tetherow Golf Club"></div>
     <div class="teamcols">
       <div class="teamcol">
         <input class="teamname" id="pr_nameA" placeholder="Team A name" value="Team A">
@@ -777,8 +779,8 @@ async function loadAll(){
   VOTE_OPTIONS = (vo.data||[]).map(o=>({ id:o.id, label:o.label }));
   TRIP_VOTES = (tvotes.data||[]).map(v=>({ id:v.id, by:v.profile_id, option:v.option_label, dest:v.dest_id }));
   MYVOTE = MYID ? (TRIP_VOTES.find(v=>v.by===MYID) || null) : null;
-  PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B') }));
-  SCORES = (sc.data||[]).map(s=>({ id:s.id, by:s.profile_id, score:s.score, label:s.label }));
+  PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, course:p.course||'', a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B') }));
+  SCORES = (sc.data||[]).map(s=>({ id:s.id, by:s.profile_id, score:s.score, label:s.label, course:s.course||'' }));
 }
 async function reload(){ await loadAll(); renderAll(); }
 
@@ -921,10 +923,10 @@ function renderLeaderboard(){
 }
 function renderRecord(){
   const acts = $("#recordActions");
-  if(acts) acts.innerHTML = `${isAuthed()?`<button class="btn" onclick="openScoreModal()">+ Log a score</button> `:''}${isAdmin()?`<button class="btn ghost" onclick="openTripModal()">+ Add a trip</button>`:''}`;
+  if(acts) acts.innerHTML = `${isAuthed()?`<button class="btn" onclick="openScoreModal()">+ Log a score</button>`:''}`;
   renderLeaderboard();
   const list = $("#recordList");
-  if(!TRIPS.length){ list.innerHTML = `<div class="empty"><h3>No trips on the books</h3><p>Log the trips you've already taken to build out the record — years, destinations, champions and scores.</p><div class="row"><button class="btn admin-only" onclick="openTripModal()">Add a trip</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`; return; }
+  if(!TRIPS.length){ list.innerHTML = `<div class="empty"><h3>No trips on the books yet</h3><p>The cumulative leaderboard above fills in as members log their rounds. Trip history will appear here once trips are recorded.</p></div>`; return; }
   list.innerHTML = sortedTrips().map(t=>{
     const tags = [];
     if(t.costPerDay!=null && t.costPerDay!=="") tags.push(`<span class="tag">${money(t.costPerDay)}<b> /day</b></span>`);
@@ -1206,6 +1208,7 @@ function versusCard(p){
     : `${esc((aFav?p.a:p.b).name)} hold the edge on handicap. The card says otherwise more often than you'd think.`;
   return `<div class="versus">
     ${isAdmin()?`<button class="vs-del" title="Remove matchup" onclick="removePairing('${p.id}')">&times;</button>`:''}
+    ${p.course?`<div class="vs-course">⛳ ${esc(p.course)}</div>`:''}
     <div class="team ${aFav?'fav':''}">
       <div class="team-tag">${esc(p.a.name)}${aFav?' · favoured':''}</div>
       <div class="team-names">${an.length?an.map(esc).join('<br>'):'—'}</div>
@@ -1269,6 +1272,7 @@ function openPairModal(){
   const dl=$("#pr_trips"); if(dl) dl.innerHTML = trips.map(t=>`<option value="${esc(t)}"></option>`).join('');
   const ti=$("#pr_trip"); if(ti) ti.value = GALLERY_TRIPS[GALLERY_TRIPS.length-1] || '';
   const dy=$("#pr_day"); if(dy) dy.value = 1;
+  const co=$("#pr_course"); if(co) co.value = '';
   $("#pr_nameA").value = 'Team A'; $("#pr_nameB").value = 'Team B';
   PAIR_A = ['','']; PAIR_B = ['',''];
   renderSlots();
@@ -1287,7 +1291,8 @@ async function savePairing(){
   if(new Set(all).size!==all.length){ toast("A player can't be on both teams"); return; }
   const taken=takenThisDay();
   if(all.some(id=>taken.has(id))){ toast("Someone here is already playing that day"); return; }
-  const { error } = await sb.from('pairings').insert({ trip, day, team_a:{name:nameA, ids:a}, team_b:{name:nameB, ids:b} });
+  const course=($("#pr_course").value||'').trim()||null;
+  const { error } = await sb.from('pairings').insert({ trip, day, course, team_a:{name:nameA, ids:a}, team_b:{name:nameB, ids:b} });
   if(error){ toast(friendly(error)); return; }
   closeModal('pairScrim'); await reload(); go('pairings'); toast("Matchup set");
 }
@@ -1676,9 +1681,20 @@ function renderMembers(){
 }
 
 /* ---- personal score logging (feeds the cumulative leaderboard) ---- */
+function pairingCourses(){
+  return [...new Set(PAIRINGS.slice().reverse().map(p=>(p.course||'').trim()).filter(Boolean))];
+}
 function openScoreModal(){
   if(!isAuthed()){ openAuth('signin'); return; }
-  $("#sc_score").value=''; $("#sc_label").value='';
+  $("#sc_score").value='';
+  const courses = pairingCourses();
+  const sel=$("#sc_course");
+  if(sel){
+    sel.innerHTML = courses.length
+      ? `<option value="">— select a course —</option>` + courses.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')
+      : `<option value="">No courses set — ask an admin to add them in Pairings</option>`;
+    sel.disabled = !courses.length;
+  }
   renderMyScores();
   openModal('scoreScrim');
 }
@@ -1688,16 +1704,17 @@ function renderMyScores(){
   if(!mine.length){ el.innerHTML=`<p class="secnote" style="margin-top:10px">No rounds logged yet.</p>`; return; }
   const total=mine.reduce((a,s)=> a+(Number(s.score)||0), 0);
   el.innerHTML = `<div class="f" style="margin:12px 0 6px">Your rounds · total ${total}</div>`
-    + `<div class="myrounds">` + mine.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(s.label||'Round')}</span><button class="cmt-del" title="Delete" onclick="deleteMyScore('${s.id}')">&times;</button></div>`).join('') + `</div>`;
+    + `<div class="myrounds">` + mine.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(s.course||s.label||'Round')}</span><button class="cmt-del" title="Delete" onclick="deleteMyScore('${s.id}')">&times;</button></div>`).join('') + `</div>`;
 }
 async function addMyScore(){
   const me=ME(); if(!me) return;
   const sc=intOrNull($("#sc_score").value);
   if(sc==null||isNaN(sc)){ toast("Enter a score"); return; }
-  const label=($("#sc_label").value||'').trim()||null;
-  const { error }=await sb.from('scores').insert({ profile_id:me.id, score:sc, label });
+  const course=($("#sc_course").value||'').trim();
+  if(!course){ toast("Select the course you played"); return; }
+  const { error }=await sb.from('scores').insert({ profile_id:me.id, score:sc, course });
   if(error){ toast(friendly(error)); return; }
-  $("#sc_score").value=''; $("#sc_label").value='';
+  $("#sc_score").value=''; $("#sc_course").value='';
   await reload(); renderMyScores(); toast("Round logged");
 }
 async function deleteMyScore(id){
