@@ -459,6 +459,7 @@
   .vs-course{grid-column:1/-1;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--brass);font-weight:600;margin-bottom:2px}
   .vs-del{position:absolute;top:8px;right:10px;border:0;background:transparent;color:var(--mut-on-pine);font-size:20px;line-height:1;cursor:pointer}
   .vs-del:hover{color:var(--flag)}
+  .vs-tools{grid-column:1/-1;display:flex;justify-content:center;gap:8px;margin-top:4px}
   @media(max-width:560px){ .versus{grid-template-columns:1fr} .vs-medal{flex-direction:row;gap:10px;padding:4px 0} }
   .day-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;flex-wrap:wrap}
   .day-head .day-label{margin:0}
@@ -1401,8 +1402,14 @@ async function cancelWager(id){
   if(error){ toast(friendly(error)); return; }
   await reload(); toast("Wager cancelled");
 }
-async function denyWager(id){
-  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+async function adminDeleteWager(id){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  if(!confirm("Delete this wager for everyone? This can't be undone.")) return;
+  const { error }=await sb.from('wagers').delete().eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); toast("Wager deleted");
+}
+async function denyWager(id){  const w = WAGERS.find(x=>x.id===id); if(!w) return;
   const mine = wagerParty(w, MYID); if(!mine){ toast("You're not part of this wager"); return; }
   if(!confirm("Deny this wager? It will be called off for everyone and moved to history.")) return;
   const { error }=await sb.from('wagers').update({ status:'declined' }).eq('id', id);
@@ -1596,6 +1603,7 @@ function wagerCard(w){
   } else {
     body = `<div class="wg-result">${w.isPush?'🤝 Push — bets off, nobody collects.':`🏆 <b>${esc(wagerWinnerName(w))}</b> won the wager.`}</div>`;
   }
+  if(isAdmin()) actions += `<button class="btn ghost tiny" onclick="adminDeleteWager('${w.id}')">Delete</button>`;
   const byLine = (w.counterBy && w.status==='unaccepted')
     ? `Proposed by ${esc(nameOf(w.by))} · countered by ${esc(nameOf(w.counterBy))}`
     : `Proposed by ${esc(nameOf(w.by))}`;
@@ -1892,12 +1900,12 @@ function historyCard(p){
       <div class="team-result">${win?'🏆':(lose?'—':'')}</div>
     </div>`;
   return `<div class="versus closed">
-    ${isAdmin()?`<button class="vs-del" title="Re-open this matchup" onclick="reopenPairing('${p.id}')">&#8634;</button>`:''}
     ${p.course?`<div class="vs-course">⛳ ${esc(p.course)}</div>`:''}
     ${team(p.a, an, aWin, bWin)}
     <div class="vs-medal"><div class="vs">${tie?'TIE':'FT'}</div></div>
     ${team(p.b, bn, bWin, aWin)}
     <div class="vs-tag">${tie?'Halved — honours even.':`${esc((aWin?p.a:p.b).name)} took the points.`}</div>
+    ${isAdmin()?`<div class="vs-tools"><button class="btn ghost tiny" onclick="reopenPairing('${p.id}')">Re-open</button><button class="btn ghost tiny" onclick="removePairing('${p.id}')">Delete</button></div>`:''}
   </div>`;
 }
 
@@ -2514,10 +2522,19 @@ async function confirmGalleryUpload(){
   pendingGallery = null;
   closeModal('galleryScrim'); await reload(); go('gallery'); toast("Photo added");
 }
+function galleryPathFromUrl(url){
+  const marker = '/object/public/gallery/';
+  const i = (url||'').indexOf(marker);
+  if(i<0) return null;
+  return decodeURIComponent(url.slice(i+marker.length).split('?')[0]);
+}
 async function removeGalleryPhoto(id){
+  const g = GALLERY.find(x=>x.id===id); if(!g) return;
   if(!confirm("Remove this photo from the gallery?")) return;
   const { error } = await sb.from('gallery').delete().eq('id', id);
   if(error){ toast(friendly(error)); return; }
+  const path = galleryPathFromUrl(g.url);
+  if(path){ try{ await sb.storage.from('gallery').remove([path]); }catch(e){} }
   await reload(); toast("Photo removed");
 }
 /* ---- lightbox (click a photo to view / save) ---- */
