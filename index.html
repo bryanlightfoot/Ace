@@ -2315,7 +2315,7 @@ async function doJoin(){
   const pw2=$("#jn_pw2").value; if(pw!==pw2){ toast("Passwords don't match — check both fields"); return; }
   const pin=($("#jn_pin")?$("#jn_pin").value:"").trim(); if(pin!==JOIN_PIN){ toast("Incorrect group PIN — ask an admin"); return; }
   const photo=pendingPic;
-  const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ data:{ name } } });
+  const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ emailRedirectTo: window.location.origin, data:{ name, handicap:hcap, birthday:dob, age } } });
   if(error){ toast(friendly(error)); return; }
   if(!data.session){
     closeModal('authScrim');
@@ -2567,6 +2567,28 @@ function renderGallery(){
    ============================================================ */
 function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); }
 
+/* Backfill a profile from signup metadata. Needed because when email
+   confirmation is on, signUp returns no session, so the profile write in
+   doJoin is skipped — the handicap/birthday/age live in auth metadata until
+   the member confirms and lands back here with a session. */
+async function syncProfileFromMetadata(){
+  try{
+    if(!MYID) return false;
+    const me = MEMBERS.find(x=>x.id===MYID);
+    if(!me) return false;
+    const missing = (me.handicap==null||me.handicap==='') || !me.birthday || (me.age==null||me.age==='');
+    if(!missing) return false;
+    const { data:{ user } } = await sb.auth.getUser();
+    const md = (user && user.user_metadata) || {};
+    const patch={};
+    if((me.handicap==null||me.handicap==='') && md.handicap) patch.handicap = md.handicap;
+    if(!me.birthday && md.birthday) patch.birthday = md.birthday;
+    if((me.age==null||me.age==='') && md.age!=null && md.age!=='') patch.age = md.age;
+    if(!Object.keys(patch).length) return false;
+    const { error } = await sb.from('profiles').update(patch).eq('id', MYID);
+    return !error;
+  }catch(e){ return false; }
+}
 function connState(ok){
   const d=$("#syncDot"), t=$("#syncText");
   if(d) d.classList.toggle('local', !ok);
@@ -2574,10 +2596,21 @@ function connState(ok){
 }
 (async function(){
   if(!CONFIGURED){ connState(false); renderAll(); return; }
-  sb.auth.onAuthStateChange((_e, session)=>{ MYID = session ? session.user.id : null; });
-  try{ await loadAll(); connState(true); }
+  let BOOTED=false;
+  sb.auth.onAuthStateChange(async (event, session)=>{
+    MYID = session ? session.user.id : null;
+    if(!BOOTED) return;
+    if(event==='SIGNED_IN' && MYID){ await syncProfileFromMetadata(); }
+    await reload();
+  });
+  try{
+    await loadAll();
+    if(MYID && await syncProfileFromMetadata()) await loadAll();
+    connState(true);
+  }
   catch(e){ connState(false); }
   renderAll();
+  BOOTED=true;
 })();
 </script>
 </body>
