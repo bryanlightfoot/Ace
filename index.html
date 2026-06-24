@@ -316,6 +316,7 @@
   .wg-card.s-accepted{border-top-color:var(--fairway)}
   .wg-card.s-unaccepted{border-top-color:var(--brass)}
   .wg-card.s-completed{border-top-color:var(--brass-deep)}
+  .wg-card.s-declined{border-top-color:var(--flag)}
   .wg-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .wg-amount{font-family:"Bodoni Moda",serif;font-weight:900;font-size:30px;color:var(--ink);line-height:1}
   .wg-badge{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
@@ -323,6 +324,23 @@
   .wg-badge.b-unaccepted{background:rgba(196,154,74,.16);color:var(--brass-deep)}
   .wg-badge.b-accepted{background:rgba(76,138,90,.16);color:var(--fairway)}
   .wg-badge.b-completed{background:rgba(154,120,54,.18);color:var(--brass-deep)}
+  .wg-badge.b-declined{background:rgba(178,58,46,.14);color:var(--flag)}
+  /* notification bell + My Wagers area */
+  .wg-bell{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;
+    background:var(--flag);color:#fff;border-radius:999px;font-family:"Spline Sans Mono",monospace;font-size:11px;font-weight:700;line-height:1}
+  .wg-bell.sm{margin-left:6px}
+  .avatarbtn .wg-bell{margin:0 2px}
+  .mw-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .mw-sec{margin-top:16px}
+  .mw-h{font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--brass-deep);margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+  .mw-card{border:1px solid var(--rule);border-left:4px solid var(--ink-soft);border-radius:10px;
+    padding:13px 15px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;background:var(--paper)}
+  .mw-card.s-accepted{border-left-color:var(--fairway)}
+  .mw-card.s-unaccepted{border-left-color:var(--brass)}
+  .mw-card.s-completed{border-left-color:var(--brass-deep)}
+  .mw-card.s-declined{border-left-color:var(--flag)}
+  .mw-empty{color:var(--ink-soft);font-size:14px;padding:18px 4px}
   .wg-terms{font-size:15px;color:var(--ink);line-height:1.4;white-space:pre-wrap}
   .wg-by{font-size:12px;color:var(--ink-soft)}
   .wg-parties{display:flex;flex-wrap:wrap;gap:7px}
@@ -532,7 +550,7 @@
       <div class="head-row">
         <div><p class="eyebrow" style="color:var(--brass)">Teams · current trip</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">Pairings</h2>
-          <p class="sub-on-pine">Many teams enter, only one walks away clean. Tough competition, guaranteed winners and losers. Combined handicaps totalled automatically.</p></div>
+          <p class="sub-on-pine">Tough competition, guaranteed winners and losers. Combined handicaps totalled automatically.</p></div>
         <div id="pairingsActions"></div>
       </div>
       <div id="pairingsBody"></div>
@@ -818,6 +836,36 @@
   </div>
 </div>
 
+<!-- ===== MY WAGERS MODAL ===== -->
+<div class="scrim" id="myWagersScrim">
+  <div class="modal">
+    <div class="mw-head">
+      <h3 style="margin:0">My wagers</h3>
+      <button class="btn tiny" onclick="closeModal('myWagersScrim'); openWagerModal()">+ New wager</button>
+    </div>
+    <p class="sub">Confirm, counter or deny what's pending. Note the outcome on accepted bets — once everyone agrees, it settles into the history.</p>
+    <div id="myWagersBody"></div>
+    <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn ghost" onclick="closeModal('myWagersScrim'); go('wagers')">Open the Wagers tab</button>
+      <button class="btn" onclick="closeModal('myWagersScrim')">Done</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- ===== COUNTER MODAL ===== -->
+<div class="scrim" id="counterScrim">
+  <div class="modal">
+    <h3>Counter the wager</h3>
+    <p class="sub">Propose different terms back. Everyone's acceptance resets and the other members re-confirm the new deal.</p>
+    <div class="field"><label class="f">Amount ($)</label><input id="ct_amount" type="number" min="1"></div>
+    <div class="field"><label class="f">New terms</label><textarea id="ct_terms"></textarea></div>
+    <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn ghost" onclick="closeModal('counterScrim')">Cancel</button>
+      <button class="btn" onclick="saveCounter()">Send counter</button>
+    </div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -937,7 +985,7 @@ async function loadAll(){
   (wp.data||[]).forEach(p=>{ (partyByWager[p.wager_id]=partyByWager[p.wager_id]||[]).push({ id:p.id, pid:p.profile_id, accepted:!!p.accepted, outcomeOk:!!p.outcome_ok }); });
   WAGERS = (wg.data||[]).map(w=>({
     id:w.id, by:w.created_by, amount:w.amount, terms:w.terms, status:w.status||'unaccepted',
-    proposedWinner:w.proposed_winner_id, winnerId:w.winner_id, isPush:!!w.is_push,
+    proposedWinner:w.proposed_winner_id, winnerId:w.winner_id, isPush:!!w.is_push, counterBy:w.counter_by||null,
     parties: partyByWager[w.id]||[]
   }));
 }
@@ -1339,6 +1387,113 @@ async function cancelWager(id){
   if(error){ toast(friendly(error)); return; }
   await reload(); toast("Wager cancelled");
 }
+async function denyWager(id){
+  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  const mine = wagerParty(w, MYID); if(!mine){ toast("You're not part of this wager"); return; }
+  if(!confirm("Deny this wager? It will be called off for everyone and moved to history.")) return;
+  const { error }=await sb.from('wagers').update({ status:'declined' }).eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); toast("Wager denied");
+}
+
+/* ---- counter (re-propose terms) ---- */
+let counterWager=null;
+function openCounterModal(id){
+  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+  if(!wagerParty(w, MYID)){ toast("You're not part of this wager"); return; }
+  counterWager=id;
+  $("#ct_amount").value = (w.amount!=null?w.amount:'');
+  $("#ct_terms").value = w.terms||'';
+  openModal('counterScrim');
+}
+async function saveCounter(){
+  const id=counterWager; const w=WAGERS.find(x=>x.id===id); if(!w) return;
+  const mine = wagerParty(w, MYID); if(!mine) return;
+  const amount=intOrNull($("#ct_amount").value);
+  if(amount==null||isNaN(amount)||amount<=0){ toast("Enter a dollar amount"); return; }
+  const terms=$("#ct_terms").value.trim();
+  if(!terms){ toast("Spell out the new terms"); return; }
+  try{
+    let { error }=await sb.from('wagers').update({ amount, terms, status:'unaccepted', counter_by:MYID, proposed_winner_id:null, is_push:false }).eq('id', id); if(error) throw error;
+    ({ error }=await sb.from('wager_parties').update({ accepted:false, outcome_ok:false }).eq('wager_id', id)); if(error) throw error;
+    ({ error }=await sb.from('wager_parties').update({ accepted:true }).eq('id', mine.id)); if(error) throw error;
+  }catch(e){ toast(friendly(e)); return; }
+  counterWager=null; closeModal('counterScrim'); await reload(); toast("Counter sent — waiting on the others");
+}
+
+/* ---- notifications + My Wagers (profile area) ---- */
+function myWagerAttention(){
+  if(!isAuthed()) return 0;
+  return WAGERS.reduce((n,w)=>{
+    const mine = wagerParty(w, MYID); if(!mine) return n;
+    if(w.status==='unaccepted' && !mine.accepted) return n+1;
+    if(w.status==='accepted' && (w.isPush||w.proposedWinner) && !mine.outcomeOk) return n+1;
+    return n;
+  },0);
+}
+function openMyWagers(){ if(!isAuthed()){ openAuth('signin'); return; } renderMyWagers(); openModal('myWagersScrim'); }
+function mwShell(w, head, body, actions){
+  const statusLabel = { unaccepted:'Unaccepted', accepted:'Accepted', completed:'Completed', declined:'Declined' }[w.status]||w.status;
+  return `<div class="mw-card s-${w.status}">
+    <div class="wg-top"><div class="wg-amount" style="font-size:24px">${money(w.amount)}</div>
+      <span class="wg-badge b-${w.status}">${statusLabel}</span></div>
+    <div class="wg-terms" style="font-size:14px">${esc(w.terms)}</div>
+    <div class="wg-by">${head}</div>
+    ${body}
+    ${actions?`<div class="wg-actions">${actions}</div>`:''}
+  </div>`;
+}
+function mwPendingCard(w){
+  const mine=wagerParty(w,MYID);
+  const head = w.counterBy ? `Countered by ${esc(nameOf(w.counterBy))}` : `Proposed by ${esc(nameOf(w.by))}`;
+  let actions='';
+  if(mine && !mine.accepted){
+    actions = `<button class="btn tiny" onclick="acceptWager('${w.id}')">Confirm</button>`
+      + `<button class="btn ghost tiny" onclick="openCounterModal('${w.id}')">Counter</button>`
+      + `<button class="btn ghost tiny" onclick="denyWager('${w.id}')">Deny</button>`;
+  } else {
+    actions = `<span class="wg-note">You're in — waiting on the others.</span>`;
+    if(w.by===MYID) actions += `<button class="btn ghost tiny" onclick="cancelWager('${w.id}')">Cancel</button>`;
+  }
+  return mwShell(w, head, wagerPartyChips(w,'accept'), actions);
+}
+function mwActiveCard(w){
+  const mine=wagerParty(w,MYID);
+  const proposed = w.isPush||w.proposedWinner;
+  let extra='', actions='';
+  if(proposed){
+    const who = w.isPush ? 'a push (no winner)' : `${esc(nameOf(w.proposedWinner))} won`;
+    extra = `<div class="wg-proposal">Proposed outcome: <b>${who}</b></div>`;
+    if(mine && !mine.outcomeOk){
+      actions = `<button class="btn tiny" onclick="confirmOutcome('${w.id}')">Agree</button>`
+        + `<button class="btn ghost tiny" onclick="disputeOutcome('${w.id}')">Dispute</button>`;
+    } else { actions = `<span class="wg-note">You agreed — waiting on the others.</span>`; }
+  } else {
+    actions = `<button class="btn tiny" onclick="openOutcomeModal('${w.id}')">Note the outcome</button>`;
+  }
+  return mwShell(w, `Proposed by ${esc(nameOf(w.by))}`, wagerPartyChips(w, proposed?'outcome':'accept')+extra, actions);
+}
+function mwHistoryCard(w){
+  const res = w.status==='declined' ? '🚫 Called off — wager denied.'
+    : (w.isPush ? '🤝 Push — bets off, nobody collected.' : `🏆 <b>${esc(wagerWinnerName(w))}</b> won the wager.`);
+  return mwShell(w, `Proposed by ${esc(nameOf(w.by))}`, `<div class="wg-result" style="font-size:15px">${res}</div>`, '');
+}
+function renderMyWagers(){
+  const body=$("#myWagersBody"); if(!body) return;
+  const me=ME();
+  if(!me){ body.innerHTML=`<p class="sub">Sign in to see your wagers.</p>`; return; }
+  const mineAll = WAGERS.filter(w=>wagerParty(w, me.id));
+  if(!mineAll.length){ body.innerHTML=`<div class="mw-empty">You're not in any wagers yet. Use the Wagers tab to start one.</div>`; return; }
+  const pend   = mineAll.filter(w=>w.status==='unaccepted');
+  const active = mineAll.filter(w=>w.status==='accepted');
+  const hist   = mineAll.filter(w=>w.status==='completed'||w.status==='declined');
+  const sec=(title,list,fn)=> list.length?`<div class="mw-sec"><h4 class="mw-h">${title}</h4>${list.map(fn).join('')}</div>`:'';
+  body.innerHTML =
+    (sec('Pending · waiting on you', pend, mwPendingCard)
+    + sec('Accepted · note the outcome', active, mwActiveCard)
+    + sec('Your history', hist, mwHistoryCard))
+    || `<div class="mw-empty">Nothing here yet.</div>`;
+}
 
 /* ---- settle / outcome ---- */
 let outcomeWager = null;
@@ -1398,12 +1553,16 @@ function wagerPartyChips(w, mode){
 function wagerCard(w){
   const me = ME();
   const mine = me ? wagerParty(w, me.id) : null;
-  const statusLabel = { unaccepted:'Unaccepted', accepted:'Accepted', completed:'Completed' }[w.status] || w.status;
+  const statusLabel = { unaccepted:'Unaccepted', accepted:'Accepted', completed:'Completed', declined:'Declined' }[w.status] || w.status;
   let body = '', actions = '';
   if(w.status==='unaccepted'){
     body = wagerPartyChips(w, 'accept');
-    if(mine && !mine.accepted){ actions += `<button class="btn tiny" onclick="acceptWager('${w.id}')">Accept the bet</button>`; }
-    else if(mine && mine.accepted){ actions += `<span class="wg-note">Waiting on the others to accept…</span>`; }
+    if(mine && !mine.accepted){
+      actions += `<button class="btn tiny" onclick="acceptWager('${w.id}')">Accept</button>`;
+      actions += `<button class="btn ghost tiny" onclick="openCounterModal('${w.id}')">Counter</button>`;
+      actions += `<button class="btn ghost tiny" onclick="denyWager('${w.id}')">Deny</button>`;
+    }
+    else if(mine && mine.accepted){ actions += `<span class="wg-note">Waiting on the others…</span>`; }
     if(me && w.by===me.id){ actions += `<button class="btn ghost tiny" onclick="cancelWager('${w.id}')">Cancel</button>`; }
   } else if(w.status==='accepted'){
     const proposed = w.isPush || w.proposedWinner;
@@ -1418,16 +1577,21 @@ function wagerCard(w){
     } else if(mine){
       actions += `<button class="btn tiny" onclick="openOutcomeModal('${w.id}')">Settle up</button>`;
     }
+  } else if(w.status==='declined'){
+    body = `<div class="wg-result">🚫 Called off — wager denied.</div>`;
   } else {
     body = `<div class="wg-result">${w.isPush?'🤝 Push — bets off, nobody collects.':`🏆 <b>${esc(wagerWinnerName(w))}</b> won the wager.`}</div>`;
   }
+  const byLine = (w.counterBy && w.status==='unaccepted')
+    ? `Proposed by ${esc(nameOf(w.by))} · countered by ${esc(nameOf(w.counterBy))}`
+    : `Proposed by ${esc(nameOf(w.by))}`;
   return `<div class="wg-card s-${w.status}">
     <div class="wg-top">
       <div class="wg-amount">${money(w.amount)}</div>
       <span class="wg-badge b-${w.status}">${statusLabel}</span>
     </div>
     <div class="wg-terms">${esc(w.terms)}</div>
-    <div class="wg-by">Proposed by ${esc(nameOf(w.by))}</div>
+    <div class="wg-by">${byLine}</div>
     ${body}
     ${actions?`<div class="wg-actions">${actions}</div>`:''}
   </div>`;
@@ -1445,12 +1609,12 @@ function renderWagers(){
   const groups = {
     accepted: WAGERS.filter(w=>w.status==='accepted'),
     unaccepted: WAGERS.filter(w=>w.status==='unaccepted'),
-    completed: WAGERS.filter(w=>w.status==='completed'),
+    history: WAGERS.filter(w=>w.status==='completed'||w.status==='declined'),
   };
   const section = (title, list)=> list.length ? `<div class="wg-section"><p class="eyebrow" style="color:var(--brass)">${title}</p><div class="wg-grid">${list.map(wagerCard).join('')}</div></div>` : '';
   body.innerHTML = section('Active wagers', groups.accepted)
     + section('Awaiting acceptance', groups.unaccepted)
-    + section('Settled', groups.completed);
+    + section('History', groups.history);
 }
 
 /* ============================================================
@@ -2031,8 +2195,11 @@ function avatarHTML(m,size){
 function renderAcct(){
   const el=$("#acct"); if(!el) return; const m=ME();
   if(!m){ el.innerHTML = `<button class="btn ghost tiny" onclick="openAuth('signin')">Sign in</button>`; return; }
-  el.innerHTML = `<button class="avatarbtn" onclick="toggleAcctMenu(event)">${avatarHTML(m,30)}<span class="aname">${esc(m.name)}${m.role==='admin'?` <i class="abadge">Admin</i>`:``}</span><span class="caret">&#9662;</span></button>
+  const att = myWagerAttention();
+  const bell = att>0 ? `<span class="wg-bell" title="${att} wager${att>1?'s':''} need your attention">${att}</span>` : '';
+  el.innerHTML = `<button class="avatarbtn" onclick="toggleAcctMenu(event)">${avatarHTML(m,30)}<span class="aname">${esc(m.name)}${m.role==='admin'?` <i class="abadge">Admin</i>`:``}</span>${bell}<span class="caret">&#9662;</span></button>
     <div class="acctmenu" id="acctmenu">
+      <button onclick="openMyWagers()">My wagers${att>0?` <span class="wg-bell sm">${att}</span>`:``}</button>
       <button onclick="openProfile()">My profile</button>
       ${m.role==='admin'?`<button onclick="go('members')">Manage members</button>`:``}
       <button onclick="signOut()">Sign out</button>
@@ -2376,7 +2543,7 @@ function renderGallery(){
 /* ============================================================
    Render all + boot
    ============================================================ */
-function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); }
+function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); }
 
 function connState(ok){
   const d=$("#syncDot"), t=$("#syncText");
