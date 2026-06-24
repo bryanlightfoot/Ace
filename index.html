@@ -692,7 +692,7 @@
     <div class="field"><label class="f">Name</label><input id="pf_name"></div>
     <div class="row2">
       <div class="field"><label class="f">Handicap</label><input id="pf_hcap" placeholder="e.g. 12.4"></div>
-      <div class="field"><label class="f">Age</label><input id="pf_age" type="number"></div>
+      <div class="field"><label class="f">Birthday</label><input id="pf_dob" type="date"><div class="secnote" id="pf_agehint" style="margin-top:6px"></div></div>
     </div>
     <div class="field"><label class="f">Change PIN (optional)</label><input id="pf_pin" type="password" placeholder="Leave blank to keep current"></div>
     <div id="pf_admin"></div>
@@ -906,6 +906,20 @@ const uid = ()=> Math.random().toString(36).slice(2,9);
 const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const money = n => (n||n===0) ? ("$"+Number(n).toLocaleString()) : "—";
 const intOrNull = v => { v=(v??"").toString().trim(); return v===""?null:Number(v); };
+const todayISO = () => { const d=new Date(), p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
+function ageFromBirthday(dob){
+  if(!dob) return null;
+  const b=new Date(dob+'T00:00:00'); if(isNaN(b.getTime())) return null;
+  const now=new Date();
+  let a=now.getFullYear()-b.getFullYear();
+  const mo=now.getMonth()-b.getMonth();
+  if(mo<0 || (mo===0 && now.getDate()<b.getDate())) a--;
+  return a;
+}
+function memberAge(m){
+  if(m && m.birthday){ const a=ageFromBirthday(m.birthday); if(a!=null) return a; }
+  return (m && m.age!=null && m.age!=='') ? m.age : null;
+}
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),1900); }
 const sortedTrips = ()=> [...TRIPS].sort((a,b)=> (b.year||0)-(a.year||0));
 function friendly(e){
@@ -949,7 +963,7 @@ async function loadAll(){
     sb.from('wager_parties').select('*'),
   ]);
 
-  MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, pic:p.avatar_url }));
+  MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, birthday:p.birthday||null, pic:p.avatar_url }));
 
   const resByTrip = {}, aceByTrip = {};
   (rs.data||[]).forEach(r=>{ (resByTrip[r.trip_id]=resByTrip[r.trip_id]||[]).push({ _id:r.id, player:r.player_name, score:r.score, profile_id:r.profile_id }); });
@@ -2266,10 +2280,10 @@ function renderAuth(){
         <div class="secnote" style="margin-top:8px">Profile photo is optional.</div></div></div>
       <div class="field"><label class="f">Name <span style="color:var(--flag)">*</span></label><input id="jn_name" placeholder="Your name or team"></div>
       <div class="row2">
-        <div class="field"><label class="f">Age <span style="color:var(--flag)">*</span></label><input id="jn_age" type="number"></div>
+        <div class="field"><label class="f">Birthday <span style="color:var(--flag)">*</span></label><input id="jn_dob" type="date" max="${todayISO()}"></div>
         <div class="field"><label class="f">Handicap <span style="color:var(--flag)">*</span></label><input id="jn_hcap" placeholder="e.g. 12.4"></div>
       </div>
-      <div class="secnote">Name, age and handicap are required.</div>
+      <div class="secnote">Name, birthday and handicap are required. Your age is worked out from your birthday and stays up to date.</div>
       <div class="secnote" style="margin-top:14px">Used only to sign back in:</div>
       <div class="field"><label class="f">Email</label><input id="jn_email" type="email" placeholder="you@email.com"></div>
       <div class="field"><label class="f">Confirm email</label><input id="jn_email2" type="email" placeholder="Re-enter your email"></div>
@@ -2291,7 +2305,9 @@ async function doSignIn(){
 }
 async function doJoin(){
   const name=$("#jn_name").value.trim(); if(!name){ toast("Add your name"); return; }
-  const age=intOrNull($("#jn_age").value); if(age==null||isNaN(age)){ toast("Add your age"); return; }
+  const dob=$("#jn_dob").value; const age=ageFromBirthday(dob);
+  if(!dob || age==null){ toast("Add your birthday"); return; }
+  if(age<0 || age>120){ toast("That birthday doesn't look right"); return; }
   const hcap=$("#jn_hcap").value.trim(); if(!hcap){ toast("Add your handicap"); return; }
   const email=$("#jn_email").value.trim(); if(!email){ toast("Add your email"); return; }
   const email2=$("#jn_email2").value.trim(); if(email!==email2){ toast("Emails don't match — check both fields"); return; }
@@ -2307,7 +2323,7 @@ async function doJoin(){
     return;
   }
   MYID = data.user.id;
-  const patch={ name, handicap:hcap, age };
+  const patch={ name, handicap:hcap, birthday:dob, age };
   if(photo){ const url=await uploadAvatar(photo, MYID); if(url) patch.avatar_url=url; }
   await sb.from('profiles').update(patch).eq('id',MYID);
   closeModal('authScrim'); await reload(); toast("Welcome, "+name);
@@ -2322,7 +2338,10 @@ function openProfile(id){
   if(id && me && id!==me.id && !isAdmin()){ toast("You can only edit your own profile"); return; }
   const m=MEMBERS.find(x=>x.id===editingMemberId); if(!m) return;
   $("#profTitle").textContent = (me&&m.id===me.id) ? "My profile" : ("Edit "+m.name);
-  $("#pf_name").value=m.name||""; $("#pf_hcap").value=m.handicap||""; $("#pf_age").value=m.age||"";
+  $("#pf_name").value=m.name||""; $("#pf_hcap").value=m.handicap||"";
+  const dob=$("#pf_dob"); if(dob){ dob.value=m.birthday||""; dob.max=todayISO(); }
+  const hint=$("#pf_agehint");
+  if(hint){ const a=memberAge(m); hint.textContent = a!=null ? `Currently ${a} years old — updates automatically.` : "Set a birthday so your age stays current."; }
   $("#pf_pin").value="";
   pendingPic = m.pic||null;
   $("#pf_prev").innerHTML = m.pic ? `<img src="${m.pic}" alt="">` : esc(initialsOf(m.name));
@@ -2343,9 +2362,11 @@ function openProfile(id){
 async function saveProfile(){
   const m=MEMBERS.find(x=>x.id===editingMemberId); if(!m) return;
   const name=$("#pf_name").value.trim(); if(!name){ toast("Name can't be blank"); return; }
-  const age=intOrNull($("#pf_age").value); if(age==null||isNaN(age)){ toast("Age can't be blank"); return; }
+  const dob=$("#pf_dob").value; const age=ageFromBirthday(dob);
+  if(!dob || age==null){ toast("Add your birthday"); return; }
+  if(age<0 || age>120){ toast("That birthday doesn't look right"); return; }
   const hcap=$("#pf_hcap").value.trim(); if(!hcap){ toast("Handicap can't be blank"); return; }
-  const patch={ name, handicap:hcap, age };
+  const patch={ name, handicap:hcap, birthday:dob, age };
   if(pendingPic===null && m.pic){ patch.avatar_url=null; }
   else if(pendingPic && pendingPic!==m.pic){ const url=await uploadAvatar(pendingPic, m.id); if(url) patch.avatar_url=url; }
   if(isAdmin()){
@@ -2385,10 +2406,11 @@ function renderMembers(){
       ? `<div class="mstat"><span class="mtot">${r.total}</span><span class="ml">total · ${r.count} round${r.count===1?'':'s'}</span></div>
          <div class="mrank">${["🥇","🥈","🥉"][r.rank-1]||('#'+r.rank)} of ${r.of}</div>`
       : `<div class="mstat none">No rounds logged yet</div>`;
+    const ag = memberAge(m);
     return `<div class="mcard">${avatarHTML(m,76)}
       <div class="mname">${esc(m.name)}</div>
       ${m.role==='admin'?`<div class="mrole">Admin</div>`:``}
-      <div class="mmeta">Hcp ${m.handicap?esc(m.handicap):'\u2014'}${m.age?(' \u00b7 '+esc(m.age)+'y'):''}</div>
+      <div class="mmeta">Hcp ${m.handicap?esc(m.handicap):'\u2014'}${ag!=null?(' \u00b7 '+esc(ag)+'y'):''}</div>
       ${stat}
       ${me&&me.id===m.id?`<div class="you">This is you</div>`:``}
       ${canEdit?`<button class="btn ghost tiny" onclick="openProfile('${m.id}')">Edit</button>`:``}
