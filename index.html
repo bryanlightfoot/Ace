@@ -442,6 +442,19 @@
   .vs-del{position:absolute;top:8px;right:10px;border:0;background:transparent;color:var(--mut-on-pine);font-size:20px;line-height:1;cursor:pointer}
   .vs-del:hover{color:var(--flag)}
   @media(max-width:560px){ .versus{grid-template-columns:1fr} .vs-medal{flex-direction:row;gap:10px;padding:4px 0} }
+  .day-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;flex-wrap:wrap}
+  .day-head .day-label{margin:0}
+  .versus.closed{background:linear-gradient(180deg,rgba(20,39,28,.42),rgba(20,39,28,.2))}
+  .team.won{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass) inset;background:rgba(196,154,74,.14)}
+  .team.won .team-tag{color:var(--brass)}
+  .team.lost{opacity:.5}
+  .team-result{margin-top:auto;padding-top:8px;font-family:"Bodoni Moda",serif;font-size:20px;color:var(--paper-on-pine)}
+  .pair-history{margin-top:24px;border-top:1px solid var(--pine-line);padding-top:14px}
+  .hist-trip{font-family:"Bodoni Moda",serif;font-weight:700;color:var(--paper-on-pine);font-size:20px;margin:14px 0 8px}
+  .cd-row{border:1px solid var(--rule);border-radius:10px;padding:12px 13px;margin-bottom:10px}
+  .cd-match{font-weight:600;color:var(--ink);margin-bottom:8px;font-size:14px}
+  .cd-match span{color:var(--ink-soft);font-style:italic;margin:0 4px}
+  .cd-winner{width:100%}
   /* pairing modal team builders */
   .teamcols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px}
   .teamcol{display:flex;flex-direction:column;gap:8px}
@@ -486,7 +499,7 @@
     <!-- ============ RECORD ============ -->
     <section class="view" id="record">
       <div class="head-row">
-        <div><p class="eyebrow" style="color:var(--brass)">Every trip, every champion</p>
+        <div><p class="eyebrow" style="color:var(--brass)">Every Trip, Every Player, Every Score</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">The Record</h2></div>
         <div id="recordActions"></div>
       </div>
@@ -497,7 +510,7 @@
     <!-- ============ HALL OF FAME ============ -->
     <section class="view" id="fame">
       <div class="head-row">
-        <div><p class="eyebrow" style="color:var(--brass)">Lifetime standings</p>
+        <div><p class="eyebrow" style="color:var(--brass)">Legends</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">Hall of Fame</h2></div>
       </div>
       <div id="fameBody"></div>
@@ -519,7 +532,7 @@
       <div class="head-row">
         <div><p class="eyebrow" style="color:var(--brass)">Teams · current trip</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">Pairings</h2>
-          <p class="sub-on-pine">Two teams enter, one team leaves. Combined handicaps totalled automatically.</p></div>
+          <p class="sub-on-pine">Many teams enter, only one walks away clean. Tough competition, guaranteed winners and losers. Combined handicaps totalled automatically.</p></div>
         <div id="pairingsActions"></div>
       </div>
       <div id="pairingsBody"></div>
@@ -792,6 +805,19 @@
   </div>
 </div>
 
+<!-- ===== CLOSE-OUT DAY MODAL ===== -->
+<div class="scrim" id="closeDayScrim">
+  <div class="modal">
+    <h3 id="cd_title">Close out the day</h3>
+    <p class="sub">Mark the result of each matchup. Once closed, the day drops into the history log below the active board. You can re-open a matchup later if a result needs fixing.</p>
+    <div id="cd_list"></div>
+    <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <button class="btn ghost" onclick="closeModal('closeDayScrim')">Cancel</button>
+      <button class="btn" onclick="saveCloseDay()">Close out day</button>
+    </div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -902,7 +928,7 @@ async function loadAll(){
   VOTE_OPTIONS = (vo.data||[]).map(o=>({ id:o.id, label:o.label }));
   TRIP_VOTES = (tvotes.data||[]).map(v=>({ id:v.id, by:v.profile_id, option:v.option_label, dest:v.dest_id }));
   MYVOTE = MYID ? (TRIP_VOTES.find(v=>v.by===MYID) || null) : null;
-  PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, course:p.course||'', a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B') }));
+  PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, course:p.course||'', a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B'), closed:!!p.closed, winner:p.winner||null }));
   SCORES = (sc.data||[]).map(s=>({ id:s.id, by:s.profile_id, score:s.score, label:s.label, course:s.course||'' }));
 
   ACCOLADES = (acc.data||[]).map(a=>({ id:a.id, pid:a.profile_id, title:a.title||'', note:a.note||'', by:a.created_by }));
@@ -998,10 +1024,8 @@ function renderClubhouse(){
               ${tlc?`<div class="sub" style="opacity:.8">⛳ ${esc(tlc.course)}${tlc.trip?` · ${esc(tlc.trip)}`:""}${tlc.day?` · Day ${esc(tlc.day)}`:""}</div>`:""}
             </div>
           </div>
-          <div class="statrow">
-            <div class="stat"><div class="n">${TRIPS.length}</div><div class="l">Trips played</div></div>
-            <div class="stat"><div class="n">${places}</div><div class="l">Courses visited</div></div>
-            <div class="stat"><div class="n">${aceCount}</div><div class="l">Holes&#8209;in&#8209;one</div></div>
+          <div class="statrow" style="justify-content:center">
+            <div class="stat" style="flex:0 0 auto;min-width:220px;text-align:center"><div class="n">${tlc?tlc.combined:"—"}</div><div class="l">Combined score</div></div>
           </div>
         </div>
       </div>
@@ -1187,7 +1211,7 @@ function renderFame(){
   const allAces = [];
   sortedTrips().forEach(t=> (t.aces||[]).forEach(a=> allAces.push({...a, year:t.year, loc:t.loc})));
   if(!st.length && !allAces.length && !ACCOLADES.length){
-    el.innerHTML = `<div class="empty"><h3>No legends yet</h3><p>Once you log trips with champions and scorecards, lifetime standings and the ace wall fill in automatically. Admins can also add society accolades by hand.</p><div class="row"><button class="btn admin-only" onclick="openTripModal()">Add a trip</button><button class="btn ghost admin-only" onclick="openAccModal()">Add an accolade</button></div></div>`;
+    el.innerHTML = `<div class="empty"><h3>No legends yet</h3><div class="row"><button class="btn admin-only" onclick="openTripModal()">Add a trip</button><button class="btn ghost admin-only" onclick="openAccModal()">Add an accolade</button></div></div>`;
     return;
   }
   const medal = i => ["🥇","🥈","🥉"][i] || "";
@@ -1602,32 +1626,60 @@ function hcapNum(pid){ const m=MEMBERS.find(x=>x.id===pid); const v=(m&&m.handic
 function hdisp(m){ return (m.handicap!=null&&m.handicap!=='')?esc(String(m.handicap)):'—'; }
 function teamTotal(ids){ return (ids||[]).reduce((s,id)=> s+hcapNum(id), 0); }
 function teamNames(ids){ return (ids||[]).map(id=>{ const m=MEMBERS.find(x=>x.id===id); return m?m.name:'?'; }); }
+function groupByTripDay(list){
+  const byTrip = {};
+  list.forEach(p=>{ const k=p.trip||'Trip'; (byTrip[k]=byTrip[k]||[]).push(p); });
+  const tripOrder = [...GALLERY_TRIPS].reverse().filter(t=>byTrip[t]);
+  const others = Object.keys(byTrip).filter(k=>!tripOrder.includes(k)).sort();
+  const order = [...tripOrder, ...others];
+  return order.map(trip=>{
+    const byDay = {};
+    byTrip[trip].forEach(p=>{ const d=p.day||1; (byDay[d]=byDay[d]||[]).push(p); });
+    return { trip, byDay, days:Object.keys(byDay).map(Number).sort((a,b)=>a-b) };
+  });
+}
 function renderPairings(){
   const body=$("#pairingsBody"), acts=$("#pairingsActions"); if(!body) return;
   acts.innerHTML = isAdmin() ? `<button class="btn" onclick="openPairModal()">+ Create a matchup</button>` : '';
   if(!PAIRINGS.length){
     body.innerHTML = `<div class="empty"><h3>No matchups set</h3><p>${isAdmin()
-      ? 'Build two teams for a day of the current trip — the website totals the handicaps on each side and sets the battle.'
+      ? 'Build the teams for a day of the current trip — the website totals the handicaps on each side and sets the battle.'
       : 'An admin will set the matchups for the current trip. Check back to see who you are up against.'}</p>${isAdmin()?`<div class="row"><button class="btn" onclick="openPairModal()">Create the first matchup</button></div>`:''}</div>`;
     return;
   }
-  const byTrip = {};
-  PAIRINGS.forEach(p=>{ const k=p.trip||'Trip'; (byTrip[k]=byTrip[k]||[]).push(p); });
-  const tripOrder = [...GALLERY_TRIPS].reverse().filter(t=>byTrip[t]);
-  const others = Object.keys(byTrip).filter(k=>!tripOrder.includes(k)).sort();
-  const order = [...tripOrder, ...others];
-  body.innerHTML = order.map(trip=>{
-    const byDay = {};
-    byTrip[trip].forEach(p=>{ const d=p.day||1; (byDay[d]=byDay[d]||[]).push(p); });
-    const days = Object.keys(byDay).map(Number).sort((a,b)=>a-b);
-    return `<div class="trip-block">
-      <h3 class="gsection-title">${esc(trip)}</h3>
-      ${days.map(d=>`<div class="day-block">
-        <div class="day-label">Day ${d}</div>
-        ${byDay[d].map(p=>versusCard(p)).join('')}
+  const open = PAIRINGS.filter(p=>!p.closed);
+  const closed = PAIRINGS.filter(p=>p.closed);
+
+  let activeHTML;
+  if(open.length){
+    activeHTML = groupByTripDay(open).map(g=>`<div class="trip-block">
+      <h3 class="gsection-title">${esc(g.trip)}</h3>
+      ${g.days.map(d=>`<div class="day-block">
+        <div class="day-head">
+          <div class="day-label">Day ${d}</div>
+          ${isAdmin()?`<button class="btn ghost tiny" onclick="openCloseDay('${encodeURIComponent(g.trip).replace(/'/g,'%27')}',${d})">Close out day &rarr;</button>`:''}
+        </div>
+        ${g.byDay[d].map(p=>versusCard(p)).join('')}
+      </div>`).join('')}
+    </div>`).join('');
+  } else {
+    activeHTML = `<div class="empty" style="padding:30px 24px"><h3>No active matchups</h3><p>${isAdmin()?'Create a new matchup to get the next day going. Past results are in the history below.':'Nothing live right now — see the history below for past results.'}</p>${isAdmin()?`<div class="row"><button class="btn" onclick="openPairModal()">Create a matchup</button></div>`:''}</div>`;
+  }
+
+  let historyHTML = '';
+  if(closed.length){
+    historyHTML = `<div class="pair-history">
+      <h3 class="gsection-title" style="color:var(--brass)">Matchup History</h3>
+      ${groupByTripDay(closed).map(g=>`<div class="trip-block">
+        <div class="hist-trip">${esc(g.trip)}</div>
+        ${g.days.slice().reverse().map(d=>`<div class="day-block">
+          <div class="day-label">Day ${d} · closed</div>
+          ${g.byDay[d].map(p=>historyCard(p)).join('')}
+        </div>`).join('')}
       </div>`).join('')}
     </div>`;
-  }).join('');
+  }
+  body.innerHTML = activeHTML + historyHTML;
 }
 function versusCard(p){
   const aT=teamTotal(p.a.ids), bT=teamTotal(p.b.ids);
@@ -1652,6 +1704,69 @@ function versusCard(p){
     </div>
     <div class="vs-tag">${tagline}</div>
   </div>`;
+}
+function historyCard(p){
+  const an=teamNames(p.a.ids), bn=teamNames(p.b.ids);
+  const aWin = p.winner==='a', bWin = p.winner==='b', tie = !aWin && !bWin;
+  const team=(t,names,win,lose)=>`<div class="team ${win?'won':''} ${lose?'lost':''}">
+      <div class="team-tag">${esc(t.name)}${win?' · won':(lose?' · lost':'')}</div>
+      <div class="team-names">${names.length?names.map(esc).join('<br>'):'—'}</div>
+      <div class="team-result">${win?'🏆':(lose?'—':'')}</div>
+    </div>`;
+  return `<div class="versus closed">
+    ${isAdmin()?`<button class="vs-del" title="Re-open this matchup" onclick="reopenPairing('${p.id}')">&#8634;</button>`:''}
+    ${p.course?`<div class="vs-course">⛳ ${esc(p.course)}</div>`:''}
+    ${team(p.a, an, aWin, bWin)}
+    <div class="vs-medal"><div class="vs">${tie?'TIE':'FT'}</div></div>
+    ${team(p.b, bn, bWin, aWin)}
+    <div class="vs-tag">${tie?'Halved — honours even.':`${esc((aWin?p.a:p.b).name)} took the points.`}</div>
+  </div>`;
+}
+
+/* ---- close out a day → history ---- */
+let closingDay = null;
+function openCloseDay(tripEnc, day){
+  if(!isAdmin()) return;
+  const trip = decodeURIComponent(tripEnc);
+  const matchups = PAIRINGS.filter(p=>!p.closed && (p.trip||'')===trip && (p.day||1)===day);
+  if(!matchups.length){ toast("No open matchups for that day"); return; }
+  closingDay = { trip, day };
+  $("#cd_title").textContent = `Close out ${trip} · Day ${day}`;
+  $("#cd_list").innerHTML = matchups.map(p=>`
+    <div class="cd-row" data-id="${p.id}">
+      <div class="cd-match">${esc(p.a.name)} <span>vs</span> ${esc(p.b.name)}${p.course?` · ${esc(p.course)}`:''}</div>
+      <select class="cd-winner">
+        <option value="">— pick the result —</option>
+        <option value="a">${esc(p.a.name)} won</option>
+        <option value="b">${esc(p.b.name)} won</option>
+        <option value="tie">Halved / tie</option>
+      </select>
+    </div>`).join('');
+  openModal('closeDayScrim');
+}
+async function saveCloseDay(){
+  if(!isAdmin()||!closingDay) return;
+  const rows=[...document.querySelectorAll('#cd_list .cd-row')];
+  const updates=[];
+  for(const r of rows){
+    const w=r.querySelector('.cd-winner').value;
+    if(!w){ toast("Pick a result for every matchup"); return; }
+    updates.push({ id:r.dataset.id, winner:w });
+  }
+  try{
+    for(const u of updates){
+      const { error }=await sb.from('pairings').update({ closed:true, winner:u.winner }).eq('id', u.id);
+      if(error) throw error;
+    }
+  }catch(e){ toast(friendly(e)); return; }
+  closingDay=null; closeModal('closeDayScrim'); await reload(); toast("Day closed — results dropped to history");
+}
+async function reopenPairing(id){
+  if(!isAdmin()) return;
+  if(!confirm("Re-open this matchup? It moves back to the active board and its result is cleared.")) return;
+  const { error }=await sb.from('pairings').update({ closed:false, winner:null }).eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); toast("Matchup re-opened");
 }
 
 /* ---- create-matchup modal: named teams + dropdown slots ---- */
@@ -1990,7 +2105,9 @@ function renderAuth(){
       <div class="secnote">Name, age and handicap are required.</div>
       <div class="secnote" style="margin-top:14px">Used only to sign back in:</div>
       <div class="field"><label class="f">Email</label><input id="jn_email" type="email" placeholder="you@email.com"></div>
+      <div class="field"><label class="f">Confirm email</label><input id="jn_email2" type="email" placeholder="Re-enter your email"></div>
       <div class="field"><label class="f">Password (6+ characters)</label><input id="jn_pw" type="password"></div>
+      <div class="field"><label class="f">Confirm password</label><input id="jn_pw2" type="password" placeholder="Re-enter your password"></div>
       <div class="field"><label class="f">Group PIN</label><input id="jn_pin" type="password" placeholder="Ask an admin for the PIN"></div>
       <div class="secnote">You'll need the group PIN to join. You'll join as a member; an admin can grant you admin rights later.</div>
       <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
@@ -2010,7 +2127,9 @@ async function doJoin(){
   const age=intOrNull($("#jn_age").value); if(age==null||isNaN(age)){ toast("Add your age"); return; }
   const hcap=$("#jn_hcap").value.trim(); if(!hcap){ toast("Add your handicap"); return; }
   const email=$("#jn_email").value.trim(); if(!email){ toast("Add your email"); return; }
+  const email2=$("#jn_email2").value.trim(); if(email!==email2){ toast("Emails don't match — check both fields"); return; }
   const pw=$("#jn_pw").value; if(pw.length<6){ toast("Password must be at least 6 characters"); return; }
+  const pw2=$("#jn_pw2").value; if(pw!==pw2){ toast("Passwords don't match — check both fields"); return; }
   const pin=($("#jn_pin")?$("#jn_pin").value:"").trim(); if(pin!==JOIN_PIN){ toast("Incorrect group PIN — ask an admin"); return; }
   const photo=pendingPic;
   const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ data:{ name } } });
