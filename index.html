@@ -1394,7 +1394,7 @@ function renderLeaderboard(){
   const { ranked } = scoreboard();
   if(!ranked.length){
     el.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="pad">
-      <p class="eyebrow">Cumulative leaderboard · lowest total leads</p>
+      <p class="eyebrow">Cumulative leaderboard</p>
       <p class="sub" style="margin-top:4px">No rounds logged yet. ${isAuthed()?'Tap “Log a score” to get on the board.':'Sign in and log a score to get on the board.'}</p>
     </div></div>`;
     return;
@@ -1402,7 +1402,7 @@ function renderLeaderboard(){
   const medal = i => ["🥇","🥈","🥉"][i] || `${i+1}`;
   const me = ME();
   el.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="pad">
-    <p class="eyebrow">Cumulative leaderboard · lowest total leads</p>
+    <p class="eyebrow">Cumulative leaderboard</p>
     <table class="hof" style="margin-top:10px"><thead><tr><th></th><th>Player</th><th class="r">Rounds</th><th class="r">Total</th></tr></thead>
     <tbody>${ranked.map((r,i)=>`<tr${me&&me.id===r.id?' style="background:rgba(196,154,74,.1)"':''}>
       <td class="medal">${medal(i)}</td>
@@ -1417,7 +1417,7 @@ function renderWagerLeaderboard(){
   const { ranked } = wagerStandings();
   if(!ranked.length){
     el.insertAdjacentHTML('beforeend', `<div class="card" style="margin-bottom:16px"><div class="pad">
-      <p class="eyebrow" style="color:var(--brass-deep)">Wager standings · most won leads</p>
+      <p class="eyebrow" style="color:var(--brass-deep)">Wager standings</p>
       <p class="sub" style="margin-top:4px">No settled wagers yet. Standings appear here once a wager is resolved over in the Wagers tab.</p>
     </div></div>`);
     return;
@@ -1426,7 +1426,7 @@ function renderWagerLeaderboard(){
   const me = ME();
   const net = n => `<span style="color:${n>0?'var(--fairway)':n<0?'var(--flag)':'var(--ink-soft)'};font-weight:700">${netMoney(n)}</span>`;
   el.insertAdjacentHTML('beforeend', `<div class="card" style="margin-bottom:16px"><div class="pad">
-    <p class="eyebrow" style="color:var(--brass-deep)">Wager standings · most won leads, most lost trails</p>
+    <p class="eyebrow" style="color:var(--brass-deep)">Wager standings</p>
     <table class="hof" style="margin-top:10px"><thead><tr><th></th><th>Player</th><th class="r">Wagers</th><th class="r">Net</th></tr></thead>
     <tbody>${ranked.map((r,i)=>`<tr${me&&me.id===r.id?' style="background:rgba(196,154,74,.1)"':''}>
       <td class="medal">${medal(i)}</td>
@@ -1442,7 +1442,6 @@ function renderRecord(){
   renderLeaderboard();
   renderWagerLeaderboard();
   const list = $("#recordList");
-  if(!TRIPS.length){ list.innerHTML = `<div class="empty"><h3>No trips on the books yet</h3><p>The cumulative leaderboard above fills in as members log their rounds. Trip history will appear here once trips are recorded.</p></div>`; return; }
   list.innerHTML = sortedTrips().map(t=>{
     const tags = [];
     if(t.costPerDay!=null && t.costPerDay!=="") tags.push(`<span class="tag">${money(t.costPerDay)}<b> /day</b></span>`);
