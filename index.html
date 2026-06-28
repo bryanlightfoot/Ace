@@ -609,7 +609,6 @@
     <button data-v="pairings">Pairings</button>
     <button data-v="gallery">Gallery</button>
     <button data-v="members">Members</button>
-    <button data-v="vote">The Vote</button>
     <button data-v="wagers">Wagers</button>
   </nav>
 
@@ -657,17 +656,6 @@
         <div id="pairingsActions"></div>
       </div>
       <div id="pairingsBody"></div>
-    </section>
-
-    <!-- ============ VOTE ============ -->
-    <section class="view" id="vote">
-      <div class="head-row">
-        <div><p class="eyebrow" style="color:var(--brass)">Where to in 2027</p>
-          <h2 class="disp" style="color:var(--paper-on-pine)">The Vote</h2>
-          <p class="sub-on-pine">One vote each. Admins set the options; the group picks.</p></div>
-        <button class="btn admin-only" onclick="openVoteOptModal()">+ Add a trip</button>
-      </div>
-      <div id="voteBody"></div>
     </section>
 
     <!-- ============ GALLERY ============ -->
@@ -1307,7 +1295,6 @@ function renderClubhouse(){
   const last = ts[0];
   const places = new Set(ts.map(t=>t.loc)).size;
   const aceCount = TRIPS.reduce((s,t)=> s + (t.aces?t.aces.length:0), 0);
-  const lead = voteLeader();
   const tlc = teamLowballChampion();
   const recent = randomGallery(6);
   el.innerHTML = `
@@ -1331,19 +1318,7 @@ function renderClubhouse(){
           </div>
         </div>
       </div>
-      <div class="card">
-        <div class="pad">
-          <p class="eyebrow">Front&#8209;runner for 2027</p>
-          ${lead && lead.count>0 ? `
-            <h3 class="disp">${esc(lead.label)}</h3>
-            <div class="countdown" style="margin-top:10px"><span class="num">${lead.count}</span><span class="u">vote${lead.count===1?"":"s"} for 2027</span></div>
-            <button class="btn ghost tiny" style="margin-top:18px" onclick="go('vote')">Cast your vote →</button>
-          ` : `
-            <p style="color:var(--ink-soft);font-size:14px">No votes for 2027 yet.</p>
-            <button class="btn tiny" style="margin-top:8px" onclick="go('vote')">Open the ballot →</button>
-          `}
-        </div>
-      </div>
+      <div id="voteBody"></div>
     </div>
     ${ recent.length ? `
     <div class="card" style="margin-top:16px">
@@ -2128,7 +2103,10 @@ function renderVote(){
   el.innerHTML = `<div class="card"><div class="pad">
     <div class="head-row" style="margin-bottom:4px">
       <h3 class="disp" style="margin:0;color:var(--ink)">2027 Trip</h3>
-      <span class="mono" style="color:var(--ink-soft);font-size:13px">${c.total} vote${c.total===1?'':'s'} cast</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="mono" style="color:var(--ink-soft);font-size:13px">${c.total} vote${c.total===1?'':'s'} cast</span>
+        ${isAdmin()?`<button class="btn ghost tiny" onclick="openVoteOptModal()">+ Add a trip</button>`:''}
+      </div>
     </div>
     <p class="sub" style="margin-top:0">One vote each — pick where you'd most like to go in 2027.</p>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
@@ -2192,13 +2170,13 @@ async function castVote(){ if(gateBlock())return;
   await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
   const { error } = await sb.from('trip_votes').insert({ poll:'2027', profile_id:MYID, option_label:option, dest_id:dest||null });
   if(error){ toast(friendly(error)); return; }
-  await reload(); go('vote'); toast(wasUpdate?"Vote updated":"Vote cast");
+  await reload(); go('clubhouse'); toast(wasUpdate?"Vote updated":"Vote cast");
 }
 async function clearMyVote(){ if(gateBlock())return;
   if(!isAuthed()) return;
   const { error } = await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
   if(error){ toast(friendly(error)); return; }
-  await reload(); go('vote'); toast("Vote withdrawn");
+  await reload(); go('clubhouse'); toast("Vote withdrawn");
 }
 /* ---- admin: add / edit / photo a trip option ---- */
 let pendingVoteImg = null, voteImgCurrent = null, voteImgCleared = false, editingVoteOpt = null;
@@ -2260,7 +2238,7 @@ async function saveVoteOption(){
       const { error }=await sb.from('vote_options').insert({ label, image_url }); if(error) throw error;
     }
   }catch(e){ toast(friendly(e)); return; }
-  pendingVoteImg=null; closeModal('voteOptScrim'); await reload(); go('vote'); toast(editingVoteOpt?"Trip updated":"Trip added");
+  pendingVoteImg=null; closeModal('voteOptScrim'); await reload(); go('clubhouse'); toast(editingVoteOpt?"Trip updated":"Trip added");
 }
 async function removeVoteOption(id){
   if(!isAdmin()) return;
@@ -2272,7 +2250,7 @@ async function removeVoteOption(id){
     await sb.from('trip_votes').delete().eq('poll','2027').eq('option_label', opt.label);
     if(opt.image){ const path=galleryPathFromUrl(opt.image); if(path){ try{ await sb.storage.from('gallery').remove([path]); }catch(e){} } }
   }
-  await reload(); go('vote'); toast("Trip removed");
+  await reload(); go('clubhouse'); toast("Trip removed");
 }
 
 /* ============================================================
