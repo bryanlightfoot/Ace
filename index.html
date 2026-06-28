@@ -2806,10 +2806,12 @@ async function saveProfile(){
 async function removeMember(){
   const m=MEMBERS.find(x=>x.id===editingMemberId); if(!m) return;
   if(m.role==='admin' && MEMBERS.filter(x=>x.role==='admin').length<=1){ toast("Can't remove the only admin"); return; }
-  if(!confirm("Remove "+m.name+" from the society? Their past trips and scores stay in the record.")) return;
-  const { error }=await sb.from('profiles').delete().eq('id', m.id);
+  if(!confirm("Remove "+m.name+" from the society?\n\nThis permanently deletes their login — email, password and profile — and they will no longer be able to sign in. Past trip results recorded under their name stay in the history.")) return;
+  // admin_delete_member is a SECURITY DEFINER RPC: it re-checks the caller is an
+  // admin, deletes the profile, then deletes the auth.users row (email + password).
+  const { error }=await sb.rpc('admin_delete_member', { target_id: m.id });
   if(error){ toast(friendly(error)); return; }
-  closeModal('profScrim'); await reload(); toast("Member removed");
+  closeModal('profScrim'); await reload(); toast("Member fully removed");
 }
 
 /* ---- members tab ---- */
