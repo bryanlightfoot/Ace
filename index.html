@@ -220,6 +220,36 @@
   .cmt-add input{flex:1;padding:8px 10px;border:1px solid var(--rule);border-radius:7px;font-size:13px;background:var(--paper);color:var(--ink)}
   .cmt-signin{font-size:12px;color:var(--ink-soft)}
 
+  /* Destinations: Current / Historic sections + Key Info */
+  .dest-section{margin:6px 0 2px}
+  .dest-section-title{font-family:"Bodoni Moda",serif;font-weight:700;font-size:26px;color:var(--paper-on-pine);margin:0;
+    display:flex;align-items:center;gap:12px}
+  .dest-section-title::after{content:"";flex:1;height:1px;background:var(--pine-line)}
+  .dest-section-sub{color:var(--mut-on-pine);font-size:13px;margin:2px 0 0}
+  .dest.current{border-left-width:5px;border-left-color:var(--brass);position:relative}
+  .dest.current .cur-badge{position:absolute;top:-10px;right:16px;background:var(--brass);color:var(--pine);
+    font-family:"Spline Sans Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+    padding:3px 10px;border-radius:999px}
+  .keyinfo{margin-top:6px;border-top:1px dashed var(--rule);padding-top:12px}
+  .keyinfo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .course-list{display:flex;flex-direction:column;gap:10px}
+  .course{border:1px solid var(--rule);border-radius:10px;padding:12px 14px;background:rgba(196,154,74,.06)}
+  .course-head{display:flex;align-items:center;gap:10px}
+  .course-date{font-family:"Spline Sans Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--brass-deep);font-weight:700;background:rgba(196,154,74,.18);border:1px solid var(--brass);
+    border-radius:999px;padding:3px 9px;white-space:nowrap}
+  .course-name{font-family:"Bodoni Moda",serif;font-weight:700;font-size:17px;color:var(--ink);flex:1}
+  .course .tees{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .course .tee{font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--fairway);font-weight:600;
+    border:1px solid var(--rule);border-radius:7px;padding:3px 8px;background:rgba(76,138,90,.08)}
+  .course-addr{font-size:13px;color:var(--ink-soft);margin-top:8px}
+  .course-info{font-size:13px;color:var(--ink);line-height:1.5;margin-top:6px;white-space:pre-wrap}
+  .course-media{margin-top:8px;max-width:160px;width:100%;border-radius:8px;border:1px solid var(--rule);cursor:pointer;display:block}
+  .teerow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .teerow input{flex:1;padding:8px 10px;border:1px solid var(--rule);border-radius:7px;font-size:14px;background:var(--paper);color:var(--ink)}
+  .teerow button{border:1px solid var(--rule);background:transparent;color:var(--ink-soft);border-radius:7px;width:34px;cursor:pointer;font-size:16px}
+  .teerow button:hover{color:var(--flag);border-color:var(--flag)}
+
   .vbtn{border:1px solid var(--fairway);background:transparent;color:var(--fairway);
     padding:8px 16px;border-radius:8px;font-weight:600;font-size:14px;white-space:nowrap}
   .vbtn:hover{background:rgba(76,138,90,.1)}
@@ -558,7 +588,7 @@
       <div class="head-row">
         <div><p class="eyebrow" style="color:var(--brass)">Where we've been · what it cost</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">Destinations</h2>
-          <p class="sub-on-pine">Every place we've played and the cost per day. Members can like and comment.</p></div>
+          <p class="sub-on-pine">The current trip up top with its schedule and tee times, plus every place we've played. Members can like and comment.</p></div>
         <button class="btn admin-only" onclick="openDestModal()">+ Add a destination</button>
       </div>
       <div class="grid g3" id="destGrid"></div>
@@ -674,11 +704,39 @@
     </div>
     <div class="field"><label class="f">Cost / day (per person, est.)</label><input id="d_cost" type="number" placeholder="300"></div>
     <div class="field"><label class="f">Notes</label><textarea id="d_notes" placeholder="Courses, lodging, travel time, why it'd be class…"></textarea></div>
+    <label class="wg-check" style="margin-top:4px"><input type="checkbox" id="d_current"><span>This is the current / upcoming trip (shows in the Current section with Key Info)</span></label>
     <div class="modal-foot">
       <button class="btn danger tiny" id="d_delete" style="display:none" onclick="deleteDest()">Delete</button>
       <div style="margin-left:auto;display:flex;gap:10px">
         <button class="btn ghost" onclick="closeModal('destScrim')">Cancel</button>
         <button class="btn" onclick="saveDest()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== COURSE (KEY INFO) MODAL ===== -->
+<div class="scrim" id="courseScrim">
+  <div class="modal">
+    <h3 id="courseTitle">Add a course</h3>
+    <p class="sub">Set the course, the date we play it, and its tee times. Add address / confirmation details if you have them.</p>
+    <div class="row2">
+      <div class="field"><label class="f">Course name</label><input id="c_name" placeholder="Tetherow Golf Club"></div>
+      <div class="field"><label class="f">Date of play</label><input id="c_date" type="date"></div>
+    </div>
+    <div class="field">
+      <label class="f">Tee times <span style="font-weight:400;color:var(--ink-soft)">(1–4)</span></label>
+      <div id="c_tees"></div>
+      <button class="btn ghost tiny" type="button" id="c_addTee" onclick="addTeeRow()">+ Add tee time</button>
+    </div>
+    <div class="field"><label class="f">Course address <span style="font-weight:400;color:var(--ink-soft)">(optional)</span></label><input id="c_addr" placeholder="61240 Skyline Ranch Rd, Bend, OR"></div>
+    <div class="field"><label class="f">Key info / confirmation snippet <span style="font-weight:400;color:var(--ink-soft)">(optional)</span></label><textarea id="c_info" placeholder="Booking ref, paid status, who to ask for, dress code…"></textarea></div>
+    <div class="field"><label class="f">Media image URL <span style="font-weight:400;color:var(--ink-soft)">(optional — paste a link to a confirmation screenshot)</span></label><input id="c_media" placeholder="https://…"></div>
+    <div class="modal-foot">
+      <button class="btn danger tiny" id="c_delete" style="display:none" onclick="deleteCourse()">Delete</button>
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn ghost" onclick="closeModal('courseScrim')">Cancel</button>
+        <button class="btn" onclick="saveCourse()">Save</button>
       </div>
     </div>
   </div>
@@ -773,7 +831,7 @@
       <div class="field"><label class="f">Trip</label><input id="pr_trip" list="pr_trips" placeholder="Bend - 2026" oninput="onDayChange()"><datalist id="pr_trips"></datalist></div>
       <div class="field"><label class="f">Day</label><input id="pr_day" type="number" min="1" value="1" oninput="onDayChange()"></div>
     </div>
-    <div class="field"><label class="f">Course played that day</label><input id="pr_course" placeholder="e.g. Tetherow Golf Club"></div>
+    <div class="field"><label class="f">Course played that day</label><select id="pr_course"></select></div>
     <div class="teamcols">
       <div class="teamcol">
         <input class="teamname" id="pr_nameA" placeholder="Team A name" value="Team A">
@@ -949,6 +1007,7 @@ const GALLERY_TRIPS = ["Myrtle Beach - 2024", "St. George - 2025", "Bend - 2026"
 let TRIPS = [], DESTS = [], VOTES = {}, MINE = {}, MEMBERS = [], GALLERY = [], DLIKES = {}, DMINE = {}, DCOMMENTS = {};
 let VOTE_OPTIONS = [], TRIP_VOTES = [], MYVOTE = null, PAIRINGS = [], SCORES = [];
 let ACCOLADES = [], WAGERS = [];
+let COURSES = [];
 const ANY_PREV = "Any Previous Trip";
 let MYID = null;
 
@@ -996,7 +1055,7 @@ async function loadAll(){
   const { data:{ session } } = await sb.auth.getSession();
   MYID = session ? session.user.id : null;
 
-  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc, acc, wg, wp] = await Promise.all([
+  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc, acc, wg, wp, cs] = await Promise.all([
     sb.from('profiles').select('*').order('created_at'),
     sb.from('trips').select('*'),
     sb.from('results').select('*'),
@@ -1013,6 +1072,7 @@ async function loadAll(){
     sb.from('accolades').select('*').order('created_at', { ascending:false }),
     sb.from('wagers').select('*').order('created_at', { ascending:false }),
     sb.from('wager_parties').select('*'),
+    sb.from('courses').select('*'),
   ]);
 
   MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, birthday:p.birthday||null, pic:p.avatar_url }));
@@ -1027,7 +1087,12 @@ async function loadAll(){
     results: resByTrip[t.id]||[], aces: aceByTrip[t.id]||[]
   }));
 
-  DESTS = (ds.data||[]).map(d=>({ id:d.id, name:d.name, region:d.region, costPerDay:d.cost_per_day, notes:d.notes }));
+  DESTS = (ds.data||[]).map(d=>({ id:d.id, name:d.name, region:d.region, costPerDay:d.cost_per_day, notes:d.notes, isCurrent:!!d.is_current }));
+  COURSES = (cs.data||[]).map(c=>({
+    id:c.id, destId:c.destination_id, name:c.name, date:c.play_date||null,
+    teeTimes: Array.isArray(c.tee_times) ? c.tee_times : [],
+    address:c.address||'', mediaUrl:c.media_url||'', info:c.info||''
+  }));
 
   VOTES = {}; MINE = {};
   (vt.data||[]).forEach(v=>{ VOTES[v.destination_id]=(VOTES[v.destination_id]||0)+1; if(MYID && v.profile_id===MYID) MINE[v.destination_id]=true; });
@@ -1788,31 +1853,103 @@ async function deleteComment(cid){
   if(error){ toast(friendly(error)); return; }
   await reload();
 }
-function renderDests(){
-  const grid = $("#destGrid");
-  if(!DESTS.length){ grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>No destinations yet</h3><p>Add the places we've played and what they cost per day. Members can then like and comment on each one.</p><div class="row"><button class="btn admin-only" onclick="openDestModal()">Add a destination</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`; return; }
-  const me = ME();
-  grid.innerHTML = DESTS.map(d=>{
-    const liked = !!DMINE[d.id], likes = DLIKES[d.id]||0;
-    const comments = DCOMMENTS[d.id]||[];
-    return `
+/* ---- destination / course helpers ---- */
+const currentDest = ()=> DESTS.find(d=>d.isCurrent) || null;
+const historicDests = ()=> DESTS.filter(d=>!d.isCurrent);
+function coursesFor(destId){
+  return COURSES.filter(c=>c.destId===destId).slice().sort((a,b)=>{
+    const ad=a.date||'9999-12-31', bd=b.date||'9999-12-31';
+    return ad<bd ? -1 : ad>bd ? 1 : 0;
+  });
+}
+function prettyDate(iso){
+  if(!iso) return '';
+  const d=new Date(iso+'T00:00:00'); if(isNaN(d.getTime())) return esc(iso);
+  return d.toLocaleDateString(undefined,{ weekday:'short', month:'short', day:'numeric' });
+}
+
+/* ---- like/comment block, reused by historic + current cards ---- */
+function destSocial(d){
+  const liked = !!DMINE[d.id], likes = DLIKES[d.id]||0;
+  const comments = DCOMMENTS[d.id]||[];
+  return `<div class="foot">
+      <button class="likebtn${liked?' liked':''}" onclick="toggleLike('${d.id}')" title="${liked?'Unlike':'Like'}">&#9829; <span>${likes}</span></button>
+      <button class="btn ghost tiny admin-only" onclick="openDestModal('${d.id}')">Edit</button>
+    </div>
+    <div class="comments">
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${isAuthed()
+        ? `<div class="cmt-add"><input id="dc_${d.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postComment('${d.id}')"><button class="btn ghost tiny" onclick="postComment('${d.id}')">Post</button></div>`
+        : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to like or comment.</div>`}
+    </div>`;
+}
+function historicCard(d){
+  return `
     <div class="dest">
       <h3 class="disp">${esc(d.name)}</h3>
       <div class="region">${esc(d.region||"")}</div>
       <div class="cost">${money(d.costPerDay)}<small> / day</small></div>
       ${d.notes?`<div class="note">${esc(d.notes)}</div>`:""}
-      <div class="foot">
-        <button class="likebtn${liked?' liked':''}" onclick="toggleLike('${d.id}')" title="${liked?'Unlike':'Like'}">&#9829; <span>${likes}</span></button>
-        <button class="btn ghost tiny admin-only" onclick="openDestModal('${d.id}')">Edit</button>
-      </div>
-      <div class="comments">
-        ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
-        ${isAuthed()
-          ? `<div class="cmt-add"><input id="dc_${d.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postComment('${d.id}')"><button class="btn ghost tiny" onclick="postComment('${d.id}')">Post</button></div>`
-          : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to like or comment.</div>`}
-      </div>
+      ${destSocial(d)}
     </div>`;
-  }).join("");
+}
+function courseBlock(c){
+  const tees = (c.teeTimes||[]).filter(Boolean);
+  return `<div class="course">
+    <div class="course-head">
+      <div class="course-date">${c.date?prettyDate(c.date):'Date TBD'}</div>
+      <div class="course-name">${esc(c.name)}</div>
+      ${isAdmin()?`<button class="btn ghost tiny" onclick="openCourseModal('${c.id}')">Edit</button>`:''}
+    </div>
+    ${tees.length?`<div class="tees">${tees.map(t=>`<span class="tee">⛳ ${esc(t)}</span>`).join('')}</div>`:''}
+    ${c.address?`<div class="course-addr">📍 ${esc(c.address)}</div>`:''}
+    ${c.info?`<div class="course-info">${esc(c.info)}</div>`:''}
+    ${c.mediaUrl?`<img class="course-media" src="${esc(c.mediaUrl)}" alt="" onclick="openLightbox('${esc(c.mediaUrl)}')">`:''}
+  </div>`;
+}
+function currentCard(d){
+  const courses = coursesFor(d.id);
+  return `<div class="dest current">
+    <div class="cur-badge">Current trip</div>
+    <h3 class="disp">${esc(d.name)}</h3>
+    <div class="region">${esc(d.region||"")}</div>
+    <div class="cost">${money(d.costPerDay)}<small> / day</small></div>
+    ${d.notes?`<div class="note">${esc(d.notes)}</div>`:""}
+
+    <div class="keyinfo">
+      <div class="keyinfo-head">
+        <p class="eyebrow" style="margin:0;color:var(--brass-deep)">Key Info · courses in order of play</p>
+        ${isAdmin()?`<button class="btn tiny" onclick="openCourseModal(null,'${d.id}')">+ Add course</button>`:''}
+      </div>
+      ${courses.length
+        ? `<div class="course-list">${courses.map(courseBlock).join('')}</div>`
+        : `<p class="sub" style="margin:6px 0 0">${isAdmin()?'No courses added yet. Use “Add course” to set the schedule, tee times and confirmations.':'The schedule will appear here once an admin adds the courses and tee times.'}</p>`}
+    </div>
+
+    ${destSocial(d)}
+  </div>`;
+}
+function renderDests(){
+  const grid = $("#destGrid"); if(!grid) return;
+  if(!DESTS.length){ grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>No destinations yet</h3><p>Add the places we've played and what they cost per day. Members can then like and comment on each one.</p><div class="row"><button class="btn admin-only" onclick="openDestModal()">Add a destination</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`; return; }
+  const cur = currentDest();
+  const hist = historicDests();
+  let html = '';
+  html += `<div class="dest-section" style="grid-column:1/-1">
+      <h3 class="dest-section-title">Current</h3>
+      <p class="dest-section-sub">Where we're playing next — schedule, tee times and confirmations.</p>
+    </div>`;
+  html += cur
+    ? `<div class="current-wrap" style="grid-column:1/-1">${currentCard(cur)}</div>`
+    : `<div class="empty" style="grid-column:1/-1"><h3>No current trip set</h3><p>${isAdmin()?'Edit a destination and tick “This is the current/upcoming trip”, then add its courses and tee times here.':'An admin will set the upcoming trip here.'}</p></div>`;
+  html += `<div class="dest-section" style="grid-column:1/-1;margin-top:8px">
+      <h3 class="dest-section-title">Historic</h3>
+      <p class="dest-section-sub">Every place we've played and what it cost per day. Members can like and comment.</p>
+    </div>`;
+  html += hist.length
+    ? hist.map(historicCard).join("")
+    : `<p class="sub" style="grid-column:1/-1;color:var(--paper-on-pine)">No past destinations recorded yet.</p>`;
+  grid.innerHTML = html;
 }
 
 /* ============================================================
@@ -1837,7 +1974,7 @@ function renderVote(){
     </label>`;
   };
   const anySel = myOpt===ANY_PREV;
-  const destOpts = DESTS.map(d=>`<option value="${d.id}" ${anySel&&myDest===d.id?'selected':''}>${esc(d.name)}</option>`).join('');
+  const destOpts = historicDests().map(d=>`<option value="${d.id}" ${anySel&&myDest===d.id?'selected':''}>${esc(d.name)}</option>`).join('');
   const anyRow = `<label class="voteopt ${anySel?'sel':''} ${anySel?'mine':''}">
     <input type="radio" id="vote_any" name="vote2027" value="${esc(ANY_PREV)}" ${anySel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
     <span class="vlabel">Any previous trip${anySel?'<span class="vmine">✓ your vote</span>':''}</span>
@@ -2201,7 +2338,18 @@ function openPairModal(){
   const dl=$("#pr_trips"); if(dl) dl.innerHTML = trips.map(t=>`<option value="${esc(t)}"></option>`).join('');
   const ti=$("#pr_trip"); if(ti) ti.value = GALLERY_TRIPS[GALLERY_TRIPS.length-1] || '';
   const dy=$("#pr_day"); if(dy) dy.value = 1;
-  const co=$("#pr_course"); if(co) co.value = '';
+  const co=$("#pr_course");
+  if(co){
+    const cur=currentDest();
+    const courseNames = cur ? [...new Set(coursesFor(cur.id).map(c=>c.name).filter(Boolean))] : [];
+    if(courseNames.length){
+      co.innerHTML = `<option value="">— select a course —</option>` + courseNames.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+      co.disabled = false;
+    } else {
+      co.innerHTML = `<option value="">No courses defined — add them in Destinations → Current</option>`;
+      co.disabled = true;
+    }
+  }
   $("#pr_nameA").value = 'Team A'; $("#pr_nameB").value = 'Team B';
   PAIR_A = ['','']; PAIR_B = ['',''];
   renderSlots();
@@ -2324,15 +2472,20 @@ function openDestModal(id){
   $("#d_delete").style.display=d?"inline-block":"none";
   $("#d_name").value=d?.name||""; $("#d_region").value=d?.region||"";
   $("#d_cost").value=d?.costPerDay??""; $("#d_notes").value=d?.notes||"";
+  const cb=$("#d_current"); if(cb) cb.checked = !!d?.isCurrent;
   openModal("destScrim");
 }
 async function saveDest(){
   if(!isAdmin()){ toast("Admins only"); return; }
   const name=$("#d_name").value.trim();
   if(!name){ toast("Give it a name"); return; }
+  const makeCurrent = !!$("#d_current")?.checked;
   const row={ name, region:$("#d_region").value.trim(),
-    cost_per_day:$("#d_cost").value.trim()===""?null:Number($("#d_cost").value), notes:$("#d_notes").value.trim() };
+    cost_per_day:$("#d_cost").value.trim()===""?null:Number($("#d_cost").value), notes:$("#d_notes").value.trim(),
+    is_current: makeCurrent };
   try{
+    // only one destination can be the current trip
+    if(makeCurrent){ const { error:ce }=await sb.from('destinations').update({ is_current:false }).neq('id', editingDest||'00000000-0000-0000-0000-000000000000'); if(ce) throw ce; }
     if(editingDest){ const { error }=await sb.from('destinations').update(row).eq('id',editingDest); if(error) throw error; }
     else { row.created_by=MYID; const { error }=await sb.from('destinations').insert(row); if(error) throw error; }
   }catch(e){ toast(friendly(e)); return; }
@@ -2344,6 +2497,63 @@ async function deleteDest(){
   const { error }=await sb.from('destinations').delete().eq('id',editingDest);
   if(error){ toast(friendly(error)); return; }
   closeModal("destScrim"); await reload(); toast("Destination removed");
+}
+
+/* ---- Key Info: course CRUD (admin only) ---- */
+let editingCourse=null, courseDestId=null;
+function addTeeRow(value=""){
+  const box=$("#c_tees"); if(!box) return;
+  if(box.querySelectorAll('.teerow').length>=4){ toast("Up to four tee times per course"); return; }
+  const w=document.createElement("div"); w.className="teerow";
+  w.innerHTML=`<input type="time" value="${esc(value)}"><button type="button" title="Remove" onclick="this.parentNode.remove();syncTeeBtn()">×</button>`;
+  box.appendChild(w); syncTeeBtn();
+}
+function syncTeeBtn(){
+  const box=$("#c_tees"), btn=$("#c_addTee"); if(!box||!btn) return;
+  btn.style.display = box.querySelectorAll('.teerow').length>=4 ? 'none' : '';
+}
+function openCourseModal(id, destId){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  const c = id?COURSES.find(x=>x.id===id):null;
+  editingCourse = id||null;
+  courseDestId = c ? c.destId : (destId || (currentDest()&&currentDest().id));
+  if(!courseDestId){ toast("Set a current trip first"); return; }
+  $("#courseTitle").textContent = c?"Edit course":"Add a course";
+  $("#c_delete").style.display = c?"inline-block":"none";
+  $("#c_name").value=c?.name||""; $("#c_date").value=c?.date||"";
+  $("#c_addr").value=c?.address||""; $("#c_info").value=c?.info||""; $("#c_media").value=c?.mediaUrl||"";
+  const box=$("#c_tees"); box.innerHTML="";
+  const tees=(c?.teeTimes||[]).filter(Boolean);
+  if(tees.length) tees.forEach(t=>addTeeRow(t)); else addTeeRow();
+  syncTeeBtn();
+  openModal("courseScrim");
+}
+async function saveCourse(){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  const name=$("#c_name").value.trim();
+  if(!name){ toast("Name the course"); return; }
+  const tees=[...document.querySelectorAll('#c_tees .teerow input')].map(i=>i.value.trim()).filter(Boolean);
+  if(!tees.length){ toast("Add at least one tee time"); return; }
+  const row={
+    destination_id: courseDestId, name,
+    play_date: $("#c_date").value || null,
+    tee_times: tees.slice(0,4),
+    address: $("#c_addr").value.trim() || null,
+    info: $("#c_info").value.trim() || null,
+    media_url: $("#c_media").value.trim() || null
+  };
+  try{
+    if(editingCourse){ const { error }=await sb.from('courses').update(row).eq('id',editingCourse); if(error) throw error; }
+    else { const { error }=await sb.from('courses').insert(row); if(error) throw error; }
+  }catch(e){ toast(friendly(e)); return; }
+  const was=!!editingCourse;
+  closeModal("courseScrim"); await reload(); toast(was?"Course updated":"Course added");
+}
+async function deleteCourse(){
+  if(!editingCourse) return;
+  const { error }=await sb.from('courses').delete().eq('id',editingCourse);
+  if(error){ toast(friendly(error)); return; }
+  closeModal("courseScrim"); await reload(); toast("Course removed");
 }
 
 /* ============================================================
