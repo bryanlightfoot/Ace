@@ -336,6 +336,19 @@
   .abadge{font-style:normal;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);
     border:1px solid var(--brass);border-radius:4px;padding:1px 5px}
   .abadge.patron{color:var(--patron);border-color:var(--patron)}
+  /* golden "M" shown next to a member's name on comments (patrons get none) */
+  .memblem{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+    margin-left:5px;border-radius:4px;background:var(--brass);color:#2a200a;
+    font-family:"Hanken Grotesk",sans-serif;font-weight:800;font-size:10px;line-height:1;vertical-align:middle}
+  /* sign-up account-type chooser */
+  .authpick{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;color:var(--ink)}
+  .authpick:hover{border-color:var(--brass);background:#fbf6e8}
+  .ap-emblem{flex:0 0 auto;width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;
+    justify-content:center;font-family:"Bodoni Moda",serif;font-weight:900;font-size:20px}
+  .ap-tx{display:flex;flex-direction:column;gap:2px}
+  .ap-tx b{font-family:"Bodoni Moda",serif;font-size:17px;color:var(--ink)}
+  .ap-tx small{color:var(--ink-soft);font-size:12px;line-height:1.35}
   .caret{color:var(--mut-on-pine);font-size:11px}
   .acctmenu{position:absolute;right:0;top:calc(100% + 8px);min-width:185px;background:var(--paper);
     border-radius:10px;box-shadow:var(--shadow);padding:6px;display:none;z-index:40}
@@ -1565,7 +1578,7 @@ function accoladeSocial(a){
       <button class="likebtn down${my===-1?' on':''}" onclick="reactAccolade('${a.id}',-1)" title="${my===-1?'Remove dislike':'Dislike'}">&#128078; <span>${dislikes}</span></button>
     </div>
     <div class="comments">
-      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteAccoladeComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}${memberEmblem(c.by)}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteAccoladeComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
       ${isAuthed()
         ? `<div class="cmt-add"><input id="ac_${a.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postAccoladeComment('${a.id}')"><button class="btn ghost tiny" onclick="postAccoladeComment('${a.id}')">Post</button></div>`
         : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to react or comment.</div>`}
@@ -1982,7 +1995,7 @@ function wagerSocial(w){
       <button class="likebtn down${my===-1?' on':''}" onclick="reactWager('${w.id}',-1)" title="${my===-1?'Remove dislike':'Dislike'}">&#128078; <span>${dislikes}</span></button>
     </div>
     <div class="comments">
-      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteWagerComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}${memberEmblem(c.by)}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteWagerComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
       ${isAuthed()
         ? `<div class="cmt-add"><input id="wc_${w.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postWagerComment('${w.id}')"><button class="btn ghost tiny" onclick="postWagerComment('${w.id}')">Post</button></div>`
         : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to react or comment.</div>`}
@@ -2079,6 +2092,8 @@ function voteLeader(){
   return arr[0]||null;
 }
 function nameOf(pid){ const m=MEMBERS.find(x=>x.id===pid); return m?m.name:"Member"; }
+/* golden "M" badge shown by a member's name on comments; patrons get nothing */
+function memberEmblem(pid){ const m=MEMBERS.find(x=>x.id===pid); return (m && m.role!=='patron') ? `<span class="memblem" title="Member">M</span>` : ''; }
 async function reactDest(id, val){ if(gateBlock())return;
   if(!isAuthed()){ toast("Sign in to react"); openAuth('signin'); return; }
   const cur = DMYREACT[id];
@@ -2132,7 +2147,7 @@ function destSocial(d){
       <button class="btn ghost tiny admin-only" onclick="openDestModal('${d.id}')">Edit</button>
     </div>
     <div class="comments">
-      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}${memberEmblem(c.by)}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
       ${isAuthed()
         ? `<div class="cmt-add"><input id="dc_${d.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postComment('${d.id}')"><button class="btn ghost tiny" onclick="postComment('${d.id}')">Post</button></div>`
         : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to react or comment.</div>`}
@@ -3067,8 +3082,10 @@ async function uploadAvatar(dataUrl, id){
 
 /* ---- auth modal ---- */
 let authMode='signin';
-function openAuth(mode){ pendingPic=null; authMode=mode||'signin'; renderAuthTabs(); renderAuth(); openModal('authScrim'); }
-function setAuthMode(m){ authMode=m; pendingPic=null; renderAuthTabs(); renderAuth(); }
+let joinType=null;   // null = show Member/Patron chooser, then 'member' | 'patron'
+function openAuth(mode){ pendingPic=null; authMode=mode||'signin'; joinType=null; renderAuthTabs(); renderAuth(); openModal('authScrim'); }
+function setAuthMode(m){ authMode=m; pendingPic=null; joinType=null; renderAuthTabs(); renderAuth(); }
+function setJoinType(t){ joinType=t; pendingPic=null; renderAuth(); }
 function renderAuthTabs(){ const a=$("#authTabIn"),b=$("#authTabUp"); if(a)a.classList.toggle('on',authMode==='signin'); if(b)b.classList.toggle('on',authMode==='join'); }
 function renderAuth(){
   const el=$("#authBody");
@@ -3079,8 +3096,43 @@ function renderAuth(){
       <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
         <button class="btn ghost" onclick="closeModal('authScrim')">Cancel</button>
         <button class="btn" onclick="doSignIn()">Sign in</button></div></div>`;
+  } else if(!joinType){
+    el.innerHTML = `<p class="sub">How would you like to join?</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+        <button class="authpick" onclick="setJoinType('member')">
+          <span class="ap-emblem" style="background:var(--brass);color:#2a200a">M</span>
+          <span class="ap-tx"><b>Member</b><small>Full society member — log scores, join pairings and wagers. Requires the group PIN.</small></span>
+        </button>
+        <button class="authpick" onclick="setJoinType('patron')">
+          <span class="ap-emblem" style="background:var(--patron);color:#fff">P</span>
+          <span class="ap-tx"><b>Patron</b><small>Follow along and join the conversation. Just your name, email and a password — no PIN.</small></span>
+        </button>
+      </div>
+      <div class="modal-foot"><div style="margin-left:auto"><button class="btn ghost" onclick="closeModal('authScrim')">Cancel</button></div></div>`;
+  } else if(joinType==='patron'){
+    el.innerHTML = `<p class="sub">Join as a <b>Patron</b> — follow the society and join in.</p>
+      <div class="picrow"><div class="picprev" id="jn_prev">${pendingPic?`<img src="${pendingPic}" alt="">`:''}</div>
+        <div><label class="pickbtn" for="jn_file">Choose photo</label>
+        <input id="jn_file" type="file" accept="image/*" style="display:none" onchange="readPicFile(this,'jn_prev')">
+        <div class="secnote" style="margin-top:8px">Profile photo is optional.</div></div></div>
+      <div class="row2">
+        <div class="field"><label class="f">First name <span style="color:var(--flag)">*</span></label><input id="jn_first" placeholder="First name"></div>
+        <div class="field"><label class="f">Last name <span style="color:var(--flag)">*</span></label><input id="jn_last" placeholder="Last name"></div>
+      </div>
+      <div class="field"><label class="f">Suffix <span style="font-weight:400;color:var(--ink-soft)">(optional)</span></label><input id="jn_suffix" placeholder="e.g. Jr., Sr., III"></div>
+      <div class="secnote">Patrons only need a first and last name — no birthday, handicap or PIN.</div>
+      <div class="secnote" style="margin-top:14px">Used only to sign back in:</div>
+      <div class="field"><label class="f">Email</label><input id="jn_email" type="email" placeholder="you@email.com"></div>
+      <div class="field"><label class="f">Confirm email</label><input id="jn_email2" type="email" placeholder="Re-enter your email"></div>
+      <div class="field"><label class="f">Password (6+ characters)</label><input id="jn_pw" type="password"></div>
+      <div class="field"><label class="f">Confirm password</label><input id="jn_pw2" type="password" placeholder="Re-enter your password"></div>
+      <div class="modal-foot">
+        <button class="linklike" onclick="setJoinType(null)">&lsaquo; Back</button>
+        <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn ghost" onclick="closeModal('authScrim')">Cancel</button>
+        <button class="btn" onclick="doJoin()">Create account</button></div></div>`;
   } else {
-    el.innerHTML = `<p class="sub">Set up your profile so your scores and stats are yours.</p>
+    el.innerHTML = `<p class="sub">Join as a <b>Member</b> — your scores and stats are yours.</p>
       <div class="picrow"><div class="picprev" id="jn_prev">${pendingPic?`<img src="${pendingPic}" alt="">`:''}</div>
         <div><label class="pickbtn" for="jn_file">Choose photo</label>
         <input id="jn_file" type="file" accept="image/*" style="display:none" onchange="readPicFile(this,'jn_prev')">
@@ -3102,7 +3154,9 @@ function renderAuth(){
       <div class="field"><label class="f">Confirm password</label><input id="jn_pw2" type="password" placeholder="Re-enter your password"></div>
       <div class="field"><label class="f">Group PIN</label><input id="jn_pin" type="password" placeholder="Ask an admin for the PIN"></div>
       <div class="secnote">You'll need the group PIN to join. You'll join as a member; an admin can grant you admin rights later.</div>
-      <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
+      <div class="modal-foot">
+        <button class="linklike" onclick="setJoinType(null)">&lsaquo; Back</button>
+        <div style="margin-left:auto;display:flex;gap:10px">
         <button class="btn ghost" onclick="closeModal('authScrim')">Cancel</button>
         <button class="btn" onclick="doJoin()">Create account</button></div></div>`;
   }
@@ -3115,21 +3169,30 @@ async function doSignIn(){
   closeModal('authScrim'); await reload(); toast("Welcome back");
 }
 async function doJoin(){
+  const patron = joinType==='patron';
   const first=$("#jn_first").value.trim(); if(!first){ toast("Add your first name"); return; }
   const last=$("#jn_last").value.trim(); if(!last){ toast("Add your last name"); return; }
   const suffix=($("#jn_suffix")?$("#jn_suffix").value:"").trim();
   const name=[first, last, suffix].filter(Boolean).join(' ');
-  const dob=$("#jn_dob").value; const age=ageFromBirthday(dob);
-  if(!dob || age==null){ toast("Add your birthday"); return; }
-  if(age<0 || age>120){ toast("That birthday doesn't look right"); return; }
-  const hcap=$("#jn_hcap").value.trim(); if(!hcap){ toast("Add your handicap"); return; }
+  let dob=null, age=null, hcap='';
+  if(!patron){
+    dob=$("#jn_dob").value; age=ageFromBirthday(dob);
+    if(!dob || age==null){ toast("Add your birthday"); return; }
+    if(age<0 || age>120){ toast("That birthday doesn't look right"); return; }
+    hcap=$("#jn_hcap").value.trim(); if(!hcap){ toast("Add your handicap"); return; }
+  }
   const email=$("#jn_email").value.trim(); if(!email){ toast("Add your email"); return; }
   const email2=$("#jn_email2").value.trim(); if(email!==email2){ toast("Emails don't match — check both fields"); return; }
   const pw=$("#jn_pw").value; if(pw.length<6){ toast("Password must be at least 6 characters"); return; }
   const pw2=$("#jn_pw2").value; if(pw!==pw2){ toast("Passwords don't match — check both fields"); return; }
-  const pin=($("#jn_pin")?$("#jn_pin").value:"").trim(); if(pin!==JOIN_PIN){ toast("Incorrect group PIN — ask an admin"); return; }
+  if(!patron){
+    const pin=($("#jn_pin")?$("#jn_pin").value:"").trim(); if(pin!==JOIN_PIN){ toast("Incorrect group PIN — ask an admin"); return; }
+  }
   const photo=pendingPic;
-  const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ emailRedirectTo: SITE_URL, data:{ name, first_name:first, last_name:last, suffix:suffix||null, handicap:hcap, birthday:dob, age } } });
+  const meta={ name, first_name:first, last_name:last, suffix:suffix||null };
+  if(patron){ meta.signup_role='patron'; }
+  else { meta.handicap=hcap; meta.birthday=dob; meta.age=age; }
+  const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ emailRedirectTo: SITE_URL, data: meta } });
   if(error){ toast(friendly(error)); return; }
   // Supabase returns a user with an empty `identities` array when the email is
   // already registered (its enumeration-protection behaviour). Treat that as a
@@ -3150,7 +3213,9 @@ async function doJoin(){
     return;
   }
   MYID = data.user.id;
-  const patch={ name, handicap:hcap, birthday:dob, age };
+  const patch={ name };
+  if(patron){ patch.role='patron'; }
+  else { patch.handicap=hcap; patch.birthday=dob; patch.age=age; }
   if(photo){ const url=await uploadAvatar(photo, MYID); if(url) patch.avatar_url=url; }
   await sb.from('profiles').update(patch).eq('id',MYID);
   try{ localStorage.removeItem('ace_pending_avatar:'+MYID); }catch(e){}
@@ -3198,19 +3263,24 @@ function openProfile(id){
 async function saveProfile(){
   const m=MEMBERS.find(x=>x.id===editingMemberId); if(!m) return;
   const name=$("#pf_name").value.trim(); if(!name){ toast("Name can't be blank"); return; }
+  // resulting role — an admin may change it via the selector
+  const sel = isAdmin() ? $("#pf_role") : null;
+  const wantRole = sel ? sel.value : m.role;
+  const patron = wantRole==='patron';
   const dob=$("#pf_dob").value; const age=ageFromBirthday(dob);
-  if(!dob || age==null){ toast("Add your birthday"); return; }
-  if(age<0 || age>120){ toast("That birthday doesn't look right"); return; }
-  const hcap=$("#pf_hcap").value.trim(); if(!hcap){ toast("Handicap can't be blank"); return; }
-  const patch={ name, handicap:hcap, birthday:dob, age };
+  if(!patron){
+    if(!dob || age==null){ toast("Add your birthday"); return; }
+    if(age<0 || age>120){ toast("That birthday doesn't look right"); return; }
+  } else if(dob && (age==null || age<0 || age>120)){ toast("That birthday doesn't look right"); return; }
+  const hcap=$("#pf_hcap").value.trim();
+  if(!patron && !hcap){ toast("Handicap can't be blank"); return; }
+  const patch={ name, handicap:hcap||null, birthday:dob||null, age: dob?age:null };
   if(pendingPic===null && m.pic){ patch.avatar_url=null; }
   else if(pendingPic && pendingPic!==m.pic){ const url=await uploadAvatar(pendingPic, m.id); if(url) patch.avatar_url=url; }
   if(isAdmin()){
-    const sel = $("#pf_role");
-    const want = sel ? sel.value : m.role;
     // never strand the group without an admin
-    if(want!=='admin' && m.role==='admin' && MEMBERS.filter(x=>x.role==='admin').length<=1){ toast("Keep at least one admin"); return; }
-    patch.role = (want==='admin'||want==='patron') ? want : 'member';
+    if(wantRole!=='admin' && m.role==='admin' && MEMBERS.filter(x=>x.role==='admin').length<=1){ toast("Keep at least one admin"); return; }
+    patch.role = (wantRole==='admin'||wantRole==='patron') ? wantRole : 'member';
   }
   const { error }=await sb.from('profiles').update(patch).eq('id', m.id);
   if(error){ toast(friendly(error)); return; }
@@ -3576,6 +3646,9 @@ async function syncProfileFromMetadata(){
     if((me.handicap==null||me.handicap==='') && md.handicap) patch.handicap = md.handicap;
     if(!me.birthday && md.birthday) patch.birthday = md.birthday;
     if((me.age==null||me.age==='') && md.age!=null && md.age!=='') patch.age = md.age;
+    // patrons sign up with no PIN; their role rides in metadata until first login.
+    // Only apply while still the default 'member', so an admin's later change sticks.
+    if(md.signup_role==='patron' && me.role==='member') patch.role = 'patron';
 
     // Photo chosen at sign-up was stashed locally (no session existed yet).
     // Now that we're authenticated, upload it and attach the URL.
@@ -3592,7 +3665,11 @@ async function syncProfileFromMetadata(){
       return false;
     }
     const { error } = await sb.from('profiles').update(patch).eq('id', MYID);
-    if(!error){ try{ localStorage.removeItem('ace_pending_avatar:'+MYID); }catch(e){} }
+    if(!error){
+      try{ localStorage.removeItem('ace_pending_avatar:'+MYID); }catch(e){}
+      // consume the one-time patron flag so it can't undo a future role change
+      if(md.signup_role){ try{ await sb.auth.updateUser({ data:{ signup_role:null } }); }catch(e){} }
+    }
     return !error;
   }catch(e){ return false; }
 }
