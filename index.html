@@ -866,6 +866,7 @@
     <div id="wg_members" class="wg-checks"></div>
     <div class="field" style="margin-top:14px"><label class="f">Amount ($)</label><input id="wg_amount" type="number" min="1" placeholder="20"></div>
     <div class="field"><label class="f">Terms of the bet</label><textarea id="wg_terms" placeholder="e.g. First to three-putt buys the round. Or: I'll break 90 at Tetherow."></textarea></div>
+    <div class="field"><label class="f">Course <span style="color:var(--ink-soft);font-weight:400">(optional)</span></label><select id="wg_course"></select></div>
     <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
       <button class="btn ghost" onclick="closeModal('wagerScrim')">Cancel</button>
       <button class="btn" onclick="saveWager()">Propose wager</button>
@@ -1127,6 +1128,7 @@ async function loadAll(){
   WAGERS = (wg.data||[]).map(w=>({
     id:w.id, by:w.created_by, amount:w.amount, terms:w.terms, status:w.status||'unaccepted',
     proposedWinner:w.proposed_winner_id, winnerId:w.winner_id, isPush:!!w.is_push, counterBy:w.counter_by||null,
+    course:w.course||'',
     parties: partyByWager[w.id]||[]
   }));
 }
@@ -1543,6 +1545,15 @@ function openWagerModal(){
   box.innerHTML = others.length
     ? others.map(m=>`<label class="wg-check"><input type="checkbox" value="${m.id}">${avatarHTML(m,28)}<span>${esc(m.name)}</span></label>`).join('')
     : `<p class="sub" style="margin:0">No other members yet — someone needs to join before you can wager.</p>`;
+  // Optional course picker, drawn from the current destination's course list.
+  const cs = $("#wg_course");
+  if(cs){
+    const cd = currentDest();
+    const courses = cd ? coursesFor(cd.id) : [];
+    cs.innerHTML = `<option value="">— No specific course —</option>`
+      + courses.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    cs.value = '';
+  }
   openModal('wagerScrim');
 }
 async function saveWager(){
@@ -1553,8 +1564,9 @@ async function saveWager(){
   if(amount==null || isNaN(amount) || amount<=0){ toast("Enter a dollar amount"); return; }
   const terms = $("#wg_terms").value.trim();
   if(!terms){ toast("Spell out the terms of the bet"); return; }
+  const course = ($("#wg_course") ? $("#wg_course").value : '').trim() || null;
   try{
-    const { data, error }=await sb.from('wagers').insert({ created_by:MYID, amount, terms, status:'unaccepted' }).select('id').single();
+    const { data, error }=await sb.from('wagers').insert({ created_by:MYID, amount, terms, status:'unaccepted', course }).select('id').single();
     if(error) throw error;
     const wid = data.id;
     const rows = [{ wager_id:wid, profile_id:MYID, accepted:true }]
@@ -1795,6 +1807,7 @@ function wagerCard(w){
       <span class="wg-badge b-${w.status}">${statusLabel}</span>
     </div>
     <div class="wg-terms">${esc(w.terms)}</div>
+    ${w.course?`<div class="wg-course" style="font-family:'Spline Sans Mono',monospace;font-size:12px;color:var(--brass-deep);margin-top:4px">⛳ ${esc(w.course)}</div>`:''}
     <div class="wg-by">${byLine}</div>
     ${body}
     ${actions?`<div class="wg-actions">${actions}</div>`:''}
