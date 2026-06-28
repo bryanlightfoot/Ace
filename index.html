@@ -2166,7 +2166,32 @@ function normTeam(t, fallback){
   if(t && typeof t==='object') return { name:t.name||fallback, ids:Array.isArray(t.ids)?t.ids:[] };
   return { name:fallback, ids:[] };
 }
-function hcapNum(pid){ const m=MEMBERS.find(x=>x.id===pid); const v=(m&&m.handicap!=null&&m.handicap!=="")?parseFloat(m.handicap):NaN; return isNaN(v)?0:v; }
+/* ---- handicap maths ----
+   Golf convention: a "+N" handicap is BETTER than scratch, so it counts as a
+   NEGATIVE number. A plain "N" is N-over (positive). JS parseFloat reads "+3"
+   as +3, which is backwards — hcapValue fixes that.
+   e.g.  hcapValue("+3") => -3,  hcapValue("9") => 9.
+   So a +3 and a 5 paired total -3 + 5 = 2.  */
+function hcapValue(raw){
+  if(raw==null) return 0;
+  const s=String(raw).trim();
+  if(!s || /^scr/i.test(s)) return 0;          // blank or "scratch" → 0
+  const isPlus = s[0]==='+';                    // plus handicap → better than scratch
+  const mag = parseFloat(s.replace(/[^0-9.]/g,''));
+  if(isNaN(mag)) return 0;
+  return isPlus ? -mag : mag;
+}
+/* Format a (possibly negative) handicap number back into golf notation:
+   2 => "2",  -3 => "+3",  24.8 => "24.8",  0 => "0". Drops a trailing ".0". */
+function hcapFmt(n){
+  if(n==null||isNaN(n)) return '—';
+  const r=Math.round(n*10)/10;
+  if(r===0) return '0';
+  const mag=Math.abs(r);
+  const s=(mag%1===0)?String(mag):mag.toFixed(1);
+  return (r<0?'+':'')+s;
+}
+function hcapNum(pid){ const m=MEMBERS.find(x=>x.id===pid); return m?hcapValue(m.handicap):0; }
 function hdisp(m){ return (m.handicap!=null&&m.handicap!=='')?esc(String(m.handicap)):'—'; }
 function teamTotal(ids){ return (ids||[]).reduce((s,id)=> s+hcapNum(id), 0); }
 function teamNames(ids){ return (ids||[]).map(id=>{ const m=MEMBERS.find(x=>x.id===id); return m?m.name:'?'; }); }
@@ -2238,13 +2263,13 @@ function versusCard(p){
     <div class="team ${aFav?'fav':''}">
       <div class="team-tag">${esc(p.a.name)}${aFav?' · favoured':''}</div>
       <div class="team-names">${an.length?an.map(esc).join('<br>'):'—'}</div>
-      <div class="team-hcap">${aT.toFixed(1)}<span>combined hcp</span></div>
+      <div class="team-hcap">${hcapFmt(aT)}<span>combined hcp</span></div>
     </div>
     <div class="vs-medal"><div class="swords">&#9876;</div><div class="vs">VS</div></div>
     <div class="team ${bFav?'fav':''}">
       <div class="team-tag">${esc(p.b.name)}${bFav?' · favoured':''}</div>
       <div class="team-names">${bn.length?bn.map(esc).join('<br>'):'—'}</div>
-      <div class="team-hcap">${bT.toFixed(1)}<span>combined hcp</span></div>
+      <div class="team-hcap">${hcapFmt(bT)}<span>combined hcp</span></div>
     </div>
     <div class="vs-tag">${tagline}</div>
   </div>`;
