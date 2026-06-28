@@ -432,6 +432,27 @@
   .picprev img{width:100%;height:100%;object-fit:cover}
   .pickbtn{display:inline-block;background:transparent;border:1px solid var(--rule);border-radius:8px;
     padding:8px 14px;color:var(--ink);font-weight:600;font-size:13px;cursor:pointer}
+  /* avatar photos are tappable to view full size (except the account-menu button) */
+  .avatar.has-pic, .picprev.has-pic{cursor:zoom-in}
+  .avatarbtn .avatar.has-pic{cursor:pointer}
+  /* ---- photo cropper ---- */
+  .crop-stage{position:relative;width:280px;max-width:78vw;aspect-ratio:1/1;margin:2px auto 16px;
+    border-radius:12px;overflow:hidden;background:#0f1f16;touch-action:none;user-select:none}
+  .crop-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .crop-stage .crop-ring{position:absolute;inset:0;pointer-events:none;
+    box-shadow:0 0 0 9999px rgba(8,18,12,.55);border-radius:50%;border:2px solid rgba(237,230,210,.85)}
+  .crop-hint{text-align:center;color:var(--ink-soft);font-size:12px;margin:-8px 0 12px}
+  .crop-zoom{display:flex;align-items:center;gap:12px;margin:0 0 18px}
+  .crop-zoom .zlab{font-size:13px;color:var(--ink-soft)}
+  .crop-zoom input[type=range]{flex:1;accent-color:var(--brass-deep)}
+  /* ---- avatar lightbox ---- */
+  #avatarScrim{align-items:center;justify-content:center;flex-direction:column;padding:24px;cursor:zoom-out}
+  #avatarScrim .av-shell{display:flex;flex-direction:column;align-items:center;gap:14px;cursor:default}
+  #avatarScrim img{max-width:min(80vw,420px);max-height:70vh;border-radius:50%;object-fit:cover;
+    border:3px solid var(--brass);box-shadow:var(--shadow);background:var(--pine-2)}
+  #avatarScrim .av-name{color:var(--paper-on-pine);font-family:"Bodoni Moda",serif;font-size:22px;text-align:center}
+  #avatarScrim .av-close{background:transparent;border:1px solid var(--brass);color:var(--brass);
+    border-radius:8px;padding:8px 18px;font-weight:600;cursor:pointer}
   .authtabs{display:flex;gap:6px;margin-bottom:16px}
   .authtabs button{flex:1;background:transparent;border:1px solid var(--rule);color:var(--ink-soft);
     border-radius:8px;padding:9px;font-weight:600;font-size:14px}
@@ -784,6 +805,38 @@
         <button class="btn" onclick="saveProfile()">Save</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ===== PHOTO CROPPER MODAL ===== -->
+<div class="scrim" id="cropScrim">
+  <div class="modal" style="max-width:360px">
+    <h3>Position your photo</h3>
+    <p class="sub">Drag to reposition and use the slider to zoom. The circle is what others will see.</p>
+    <div class="crop-stage" id="cropStage">
+      <canvas id="cropCanvas"></canvas>
+      <div class="crop-ring"></div>
+    </div>
+    <div class="crop-hint">Drag the photo &middot; pinch or use the slider to zoom</div>
+    <div class="crop-zoom">
+      <span class="zlab">Zoom</span>
+      <input id="cropZoom" type="range" min="1" max="4" step="0.01" value="1" oninput="cropSetZoom(this.value)">
+    </div>
+    <div class="modal-foot">
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn ghost" onclick="cropCancel()">Cancel</button>
+        <button class="btn" onclick="cropApply()">Use photo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AVATAR LIGHTBOX ===== -->
+<div class="scrim" id="avatarScrim" onclick="closeModal('avatarScrim')">
+  <div class="av-shell" onclick="event.stopPropagation()">
+    <img id="avatarBig" src="" alt="">
+    <div class="av-name" id="avatarBigName"></div>
+    <button class="av-close" onclick="closeModal('avatarScrim')">Close</button>
   </div>
 </div>
 
@@ -2670,7 +2723,7 @@ function initialsOf(name){
 }
 function avatarHTML(m,size){
   const s=size||32;
-  if(m && m.pic) return `<span class="avatar" style="width:${s}px;height:${s}px"><img src="${m.pic}" style="width:100%;height:100%;object-fit:cover" alt=""></span>`;
+  if(m && m.pic) return `<span class="avatar has-pic" data-pic="${esc(m.pic)}" data-name="${esc(m?m.name:'')}" style="width:${s}px;height:${s}px"><img src="${m.pic}" style="width:100%;height:100%;object-fit:cover" alt="${esc(m?m.name:'')}"></span>`;
   return `<span class="avatar ph" style="width:${s}px;height:${s}px;font-size:${Math.round(s*0.4)}px">${esc(initialsOf(m?m.name:'?'))}</span>`;
 }
 function renderAcct(){
@@ -2696,23 +2749,116 @@ function applyRole(){
 
 /* ---- photo upload (downscaled, then stored in Supabase Storage) ---- */
 let pendingPic = null;
+
+/* ---- profile photo cropper (drag to position, slider/pinch to zoom) ----
+   readPicFile loads the chosen file into a positioning stage; the cropped
+   256x256 square becomes pendingPic and fills the target preview. ---- */
+const CROP_OUT = 256;            // stored avatar size (square; shown round via CSS)
+let cropState = null;            // { img, prevId, scale, min, max, ox, oy, stage }
 function readPicFile(input, prevId){
-  const f = input.files && input.files[0]; if(!f) return;
+  const f = input.files && input.files[0];
+  input.value = '';              // let the same file be re-picked later
+  if(!f) return;
   const r = new FileReader();
-  r.onload = function(e){
-    const img = new Image();
-    img.onload = function(){
-      const max=256; let w=img.width, h=img.height;
-      if(w>h){ if(w>max){ h=Math.round(h*max/w); w=max; } } else { if(h>max){ w=Math.round(w*max/h); h=max; } }
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      pendingPic = c.toDataURL('image/jpeg',0.82);
-      const p=$("#"+prevId); if(p) p.innerHTML = `<img src="${pendingPic}" alt="">`;
-    };
-    img.src = e.target.result;
-  };
+  r.onload = e => openCropper(e.target.result, prevId);
   r.readAsDataURL(f);
 }
+function openCropper(dataUrl, prevId){
+  const img = new Image();
+  img.onload = ()=>{
+    const canvas = $("#cropCanvas");
+    const stage = canvas.clientWidth || 280;   // CSS pixel size of the square stage
+    canvas.width = stage; canvas.height = stage;
+    // base "cover" scale so the image always fills the circle, then allow 1x–4x zoom on top
+    const min = Math.max(stage/img.width, stage/img.height);
+    cropState = { img, prevId, stage, min, max: min*4, scale: min,
+      ox:(stage - img.width*min)/2, oy:(stage - img.height*min)/2 };
+    $("#cropZoom").min = '1'; $("#cropZoom").max = '4'; $("#cropZoom").value = '1';
+    cropDraw();
+    openModal('cropScrim');
+  };
+  img.src = dataUrl;
+}
+function cropClamp(){
+  const s = cropState, dw = s.img.width*s.scale, dh = s.img.height*s.scale;
+  s.ox = Math.min(0, Math.max(s.stage - dw, s.ox));
+  s.oy = Math.min(0, Math.max(s.stage - dh, s.oy));
+}
+function cropDraw(){
+  const s = cropState; if(!s) return;
+  const ctx = $("#cropCanvas").getContext('2d');
+  cropClamp();
+  ctx.clearRect(0,0,s.stage,s.stage);
+  ctx.drawImage(s.img, s.ox, s.oy, s.img.width*s.scale, s.img.height*s.scale);
+}
+function cropSetZoom(v){
+  const s = cropState; if(!s) return;
+  const newScale = s.min * Number(v);
+  const cx = s.stage/2, cy = s.stage/2;         // zoom toward the centre of the frame
+  s.ox = cx - (cx - s.ox) * (newScale/s.scale);
+  s.oy = cy - (cy - s.oy) * (newScale/s.scale);
+  s.scale = newScale;
+  cropDraw();
+}
+/* drag + pinch on the stage */
+(function bindCropStage(){
+  const stage = ()=> $("#cropStage");
+  let drag=null, pinch=null;
+  const dist = (a,b)=> Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+  function down(e){
+    if(!cropState) return;
+    const pts=[...(e.touches||[e])];
+    if(pts.length>=2){ pinch={ d:dist(pts[0],pts[1]), z:Number($("#cropZoom").value) }; drag=null; }
+    else { drag={ x:pts[0].clientX, y:pts[0].clientY, ox:cropState.ox, oy:cropState.oy }; }
+    e.preventDefault();
+  }
+  function move(e){
+    if(!cropState) return;
+    const pts=[...(e.touches||[e])];
+    if(pinch && pts.length>=2){
+      const z = Math.max(1, Math.min(4, pinch.z * dist(pts[0],pts[1]) / pinch.d));
+      $("#cropZoom").value = z; cropSetZoom(z);
+    } else if(drag && pts.length){
+      cropState.ox = drag.ox + (pts[0].clientX - drag.x);
+      cropState.oy = drag.oy + (pts[0].clientY - drag.y);
+      cropDraw();
+    }
+    e.preventDefault();
+  }
+  function up(){ drag=null; pinch=null; }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const st = stage(); if(!st) return;
+    st.addEventListener('mousedown', down); window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+    st.addEventListener('touchstart', down, {passive:false}); st.addEventListener('touchmove', move, {passive:false}); st.addEventListener('touchend', up);
+  });
+})();
+function cropCancel(){ cropState=null; closeModal('cropScrim'); }
+function cropApply(){
+  const s = cropState; if(!s){ closeModal('cropScrim'); return; }
+  cropClamp();
+  const out = document.createElement('canvas'); out.width=CROP_OUT; out.height=CROP_OUT;
+  const k = CROP_OUT / s.stage;                 // map the stage view onto the stored square
+  out.getContext('2d').drawImage(s.img, s.ox*k, s.oy*k, s.img.width*s.scale*k, s.img.height*s.scale*k);
+  pendingPic = out.toDataURL('image/jpeg', 0.82);
+  const p = $("#"+s.prevId);
+  if(p){ p.innerHTML = `<img src="${pendingPic}" alt="">`; p.classList.remove('has-pic'); }
+  cropState=null; closeModal('cropScrim');
+}
+
+/* ---- view any member's photo full size ---- */
+function openAvatarView(pic, name){
+  if(!pic) return;
+  $("#avatarBig").src = pic;
+  $("#avatarBigName").textContent = name || '';
+  openModal('avatarScrim');
+}
+document.addEventListener('click', e=>{
+  const av = e.target.closest('.avatar.has-pic, .picprev.has-pic');
+  if(!av || av.closest('.avatarbtn')) return;   // account-menu photo opens the menu, not the lightbox
+  const pic = av.getAttribute('data-pic'); if(!pic) return;
+  e.preventDefault(); e.stopPropagation();
+  openAvatarView(pic, av.getAttribute('data-name') || '');
+});
 function clearPic(){ pendingPic=null; const p=$("#pf_prev"); if(p) p.innerHTML = esc(initialsOf($("#pf_name").value||"?")); }
 async function uploadAvatar(dataUrl, id){
   try{
