@@ -443,6 +443,9 @@
   .voteopt .vedit{border:0;background:transparent;color:var(--ink-soft);font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
   .voteopt .vedit:hover{color:var(--brass-deep)}
   .voteopt .vthumb{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;border:1px solid var(--rule)}
+  .voteopt.mine{border-color:var(--fairway)}
+  .voteopt .vmine{display:inline-block;margin-left:8px;font-family:"Spline Sans Mono",monospace;font-size:10px;font-weight:700;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--fairway);background:rgba(76,138,90,.12);padding:2px 7px;border-radius:999px;vertical-align:middle}
   .vo-prev{margin-top:6px;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:rgba(46,74,56,.05)}
   .vo-prev img{display:block;width:100%;max-height:220px;object-fit:cover}
   .vo-noimg{padding:26px;text-align:center;color:var(--ink-soft);font-size:13px}
@@ -1762,11 +1765,11 @@ function renderVote(){
   lastVoteSel = myOpt;
   const myDest = MYVOTE ? MYVOTE.dest : null;
   const optRow = (o, count) => {
-    const label = o.label, sel = myOpt===label;
-    return `<label class="voteopt ${o.image?'withimg':''} ${sel?'sel':''}">
+    const label = o.label, sel = myOpt===label, mine = MYVOTE && MYVOTE.option===label;
+    return `<label class="voteopt ${o.image?'withimg':''} ${sel?'sel':''} ${mine?'mine':''}">
       <input type="radio" name="vote2027" value="${esc(label)}" ${sel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
       ${o.image?`<img class="vthumb" src="${esc(o.image)}" alt="" title="View photo" onclick="event.preventDefault();event.stopPropagation();openLightbox('${esc(o.image)}')">`:''}
-      <span class="vlabel">${esc(label)}</span>
+      <span class="vlabel">${esc(label)}${mine?'<span class="vmine">✓ your vote</span>':''}</span>
       <span class="vtally">${count}</span>
       ${isAdmin()?`<button class="vedit" title="Edit / add photo" onclick="event.preventDefault();openVoteOptModal('${o.id}')">&#9998;</button>`:''}
       ${isAdmin()?`<button class="vrm" title="Remove" onclick="event.preventDefault();removeVoteOption('${o.id}')">&times;</button>`:''}
@@ -1774,9 +1777,9 @@ function renderVote(){
   };
   const anySel = myOpt===ANY_PREV;
   const destOpts = DESTS.map(d=>`<option value="${d.id}" ${anySel&&myDest===d.id?'selected':''}>${esc(d.name)}</option>`).join('');
-  const anyRow = `<label class="voteopt ${anySel?'sel':''}">
+  const anyRow = `<label class="voteopt ${anySel?'sel':''} ${anySel?'mine':''}">
     <input type="radio" id="vote_any" name="vote2027" value="${esc(ANY_PREV)}" ${anySel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
-    <span class="vlabel">Any previous trip</span>
+    <span class="vlabel">Any previous trip${anySel?'<span class="vmine">✓ your vote</span>':''}</span>
     ${DESTS.length?`<select id="vote_prevdest" onclick="event.stopPropagation()" onchange="var r=document.getElementById('vote_any'); if(r&&!r.disabled){ r.checked=true; vSel(r); }">${destOpts}</select>`:`<span style="font-size:12px;color:var(--ink-soft)">No previous trips yet</span>`}
     <span class="vtally">${c.anyTotal}</span>
   </label>`;
@@ -1796,6 +1799,7 @@ function renderVote(){
       ${breakdown}
       ${VOTE_OPTIONS.length===0?'<p class="secnote">No trips to vote on yet.'+(isAdmin()?' Use “+ Add a trip” to suggest some.':'')+'</p>':''}
     </div>
+    ${ me && MYVOTE ? `<p class="secnote" style="margin-top:14px">Your vote is locked in above. To change it, pick a different option and choose <strong>Update my vote</strong> — your original is removed from the count automatically.</p>` : '' }
     ${ me ? `<div class="modal-foot" style="margin-top:18px">
         ${MYVOTE?`<button class="btn ghost" onclick="clearMyVote()">Withdraw my vote</button>`:'<span></span>'}
         <button class="btn" style="margin-left:auto" onclick="castVote()">${MYVOTE?'Update my vote':'Cast my vote'}</button>
@@ -1805,20 +1809,33 @@ function renderVote(){
   </div></div>`;
 }
 let lastVoteSel = null;
-function vSel(el){
+function voteSelectRow(el){
   document.querySelectorAll('#voteBody .voteopt').forEach(x=>x.classList.remove('sel'));
-  const p = el.closest('.voteopt'); if(p) p.classList.add('sel');
-  lastVoteSel = el.value;
+  if(el){ const p = el.closest('.voteopt'); if(p) p.classList.add('sel'); }
 }
+function checkVoteRadio(v){
+  const radios=document.querySelectorAll('#voteBody input[name=vote2027]');
+  let target=null;
+  radios.forEach(r=>{ r.checked=(r.value===v); if(r.checked) target=r; });
+  voteSelectRow(target);
+  lastVoteSel = v;
+}
+function vSel(el){ voteSelectRow(el); }   // highlight only; tracking happens in vClick
 function vClick(el){
-  // click an already-selected option to deselect it
   if(el.disabled) return;
+  const myCast = MYVOTE ? MYVOTE.option : null;
+  if(myCast){
+    // A vote is already cast — that option is the locked baseline and can't be cleared to nothing.
+    if(el.value===myCast){ checkVoteRadio(myCast); return; }                 // re-affirm the locked vote
+    if(lastVoteSel===el.value && el.checked){ checkVoteRadio(myCast); return; } // 2nd click on a pending pick → revert to locked vote
+    lastVoteSel = el.value; voteSelectRow(el);                                 // choose a new option to update to
+    return;
+  }
+  // No vote cast yet — allow free deselect of an accidental pick.
   if(lastVoteSel===el.value && el.checked){
-    el.checked = false;
-    lastVoteSel = null;
-    document.querySelectorAll('#voteBody .voteopt').forEach(x=>x.classList.remove('sel'));
+    el.checked=false; lastVoteSel=null; voteSelectRow(null);
   } else {
-    lastVoteSel = el.value;
+    lastVoteSel=el.value; voteSelectRow(el);
   }
 }
 async function castVote(){
@@ -1830,10 +1847,14 @@ async function castVote(){
     const dd = $("#vote_prevdest"); dest = dd ? dd.value : "";
     if(!dest){ toast("Choose which previous trip"); return; }
   }
+  if(MYVOTE && MYVOTE.option===option && (MYVOTE.dest||null)===(dest||null)){
+    toast("That's already your vote — pick a different option to change it"); return;
+  }
+  const wasUpdate = !!MYVOTE;
   await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
   const { error } = await sb.from('trip_votes').insert({ poll:'2027', profile_id:MYID, option_label:option, dest_id:dest||null });
   if(error){ toast(friendly(error)); return; }
-  await reload(); go('vote'); toast("Vote cast");
+  await reload(); go('vote'); toast(wasUpdate?"Vote updated":"Vote cast");
 }
 async function clearMyVote(){
   if(!isAuthed()) return;
