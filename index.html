@@ -23,6 +23,8 @@
     --fairway-bright:#62A672;
     --brass:#C49A4A;       /* champions, aces */
     --brass-deep:#9A7836;
+    --patron:#4F7293;      /* patrons — dusty blue, distinct from members' brass */
+    --patron-deep:#37536B;
     --flag:#B23A2E;        /* pin flag, used sparingly */
     --paper-on-pine:#EDE6D2;
     --mut-on-pine:#9DB0A1;
@@ -326,9 +328,11 @@
   .avatarbtn:hover{background:rgba(255,255,255,.08)}
   .avatar{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
     background:var(--brass);color:#2a200a;font-weight:700;flex:0 0 auto;overflow:hidden}
+  .avatar.patron{background:var(--patron);color:#fff;box-shadow:0 0 0 2px var(--patron)}
   .aname{display:flex;align-items:center;gap:6px}
   .abadge{font-style:normal;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass);
     border:1px solid var(--brass);border-radius:4px;padding:1px 5px}
+  .abadge.patron{color:var(--patron);border-color:var(--patron)}
   .caret{color:var(--mut-on-pine);font-size:11px}
   .acctmenu{position:absolute;right:0;top:calc(100% + 8px);min-width:185px;background:var(--paper);
     border-radius:10px;box-shadow:var(--shadow);padding:6px;display:none;z-index:40}
@@ -432,6 +436,11 @@
   .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px}
   .mcard{border:1px solid var(--rule);border-top:4px solid var(--brass);border-radius:12px;padding:20px 16px 18px;
     background:var(--paper);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;color:var(--ink)}
+  .mcard.patron{border-top-color:var(--patron)}
+  .mcard.patron .mname{color:var(--patron-deep)}
+  .mcard.patron .mrole{color:var(--patron)}
+  .members-section{margin:30px 0 12px}
+  .members-section:first-child{margin-top:6px}
   .mcard .avatar{margin-bottom:4px}
   .mcard .mname{font-family:"Bodoni Moda",serif;font-weight:700;font-size:19px;color:var(--brass-deep);line-height:1.15}
   .mcard .mmeta{font-size:12px;color:var(--ink-soft);font-family:"Spline Sans Mono",monospace}
@@ -615,7 +624,7 @@
     <button data-v="record">The Record</button>
     <button data-v="dests">Destinations / Pairings</button>
     <button data-v="gallery">Gallery</button>
-    <button data-v="members">Members</button>
+    <button data-v="members">Members / Patrons</button>
     <button data-v="wagers">Wagers</button>
   </nav>
 
@@ -678,7 +687,7 @@
     <section class="view" id="members">
       <div class="head-row">
         <div><p class="eyebrow" style="color:var(--brass)">The society</p>
-          <h2 class="disp" style="color:var(--paper-on-pine)">Members</h2></div>
+          <h2 class="disp" style="color:var(--paper-on-pine)">Members / Patrons</h2></div>
         <div id="memberActions"></div>
       </div>
       <div id="membersBody"></div>
@@ -1150,6 +1159,9 @@ function friendly(e){
 const ME = ()=> MEMBERS.find(m=>m.id===MYID) || null;
 const isAuthed = ()=> !!MYID;
 const isAdmin = ()=> { const m=ME(); return !!m && m.role==='admin'; };
+const isPatron = ()=> { const m=ME(); return !!m && m.role==='patron'; };
+/* a profile counts as a "member" unless it's explicitly a patron */
+const isMemberRole = m => !!m && m.role==='patron' ? false : true;
 
 /* ============================================================
    2. LOAD — pull every table and reshape into the app's shapes
@@ -2779,15 +2791,16 @@ function initialsOf(name){
 }
 function avatarHTML(m,size){
   const s=size||32;
-  if(m && m.pic) return `<span class="avatar has-pic" data-pic="${esc(m.pic)}" data-name="${esc(m?m.name:'')}" style="width:${s}px;height:${s}px"><img src="${m.pic}" style="width:100%;height:100%;object-fit:cover" alt="${esc(m?m.name:'')}"></span>`;
-  return `<span class="avatar ph" style="width:${s}px;height:${s}px;font-size:${Math.round(s*0.4)}px">${esc(initialsOf(m?m.name:'?'))}</span>`;
+  const pat = (m && m.role==='patron') ? ' patron' : '';
+  if(m && m.pic) return `<span class="avatar has-pic${pat}" data-pic="${esc(m.pic)}" data-name="${esc(m?m.name:'')}" style="width:${s}px;height:${s}px"><img src="${m.pic}" style="width:100%;height:100%;object-fit:cover" alt="${esc(m?m.name:'')}"></span>`;
+  return `<span class="avatar ph${pat}" style="width:${s}px;height:${s}px;font-size:${Math.round(s*0.4)}px">${esc(initialsOf(m?m.name:'?'))}</span>`;
 }
 function renderAcct(){
   const el=$("#acct"); if(!el) return; const m=ME();
   if(!m){ el.innerHTML = `<button class="btn ghost tiny" onclick="openAuth('signin')">Sign in</button>`; return; }
   const att = myWagerAttention();
   const bell = att>0 ? `<span class="wg-bell" title="${att} wager${att>1?'s':''} need your attention">${att}</span>` : '';
-  el.innerHTML = `<button class="avatarbtn" onclick="toggleAcctMenu(event)">${avatarHTML(m,30)}<span class="aname">${esc(m.name)}${m.role==='admin'?` <i class="abadge">Admin</i>`:``}</span>${bell}<span class="caret">&#9662;</span></button>
+  el.innerHTML = `<button class="avatarbtn" onclick="toggleAcctMenu(event)">${avatarHTML(m,30)}<span class="aname">${esc(m.name)}${m.role==='admin'?` <i class="abadge">Admin</i>`:m.role==='patron'?` <i class="abadge patron">Patron</i>`:``}</span>${bell}<span class="caret">&#9662;</span></button>
     <div class="acctmenu" id="acctmenu">
       <button onclick="openMyWagers()">My wagers${att>0?` <span class="wg-bell sm">${att}</span>`:``}</button>
       <button onclick="openProfile()">My profile</button>
@@ -2800,6 +2813,7 @@ document.addEventListener('click', function(){ const m=$("#acctmenu"); if(m) m.c
 async function signOut(){ await sb.auth.signOut(); MYID=null; await reload(); toast("Signed out"); }
 function applyRole(){
   document.body.classList.toggle('role-admin', isAdmin());
+  document.body.classList.toggle('role-patron', isPatron());
   document.body.classList.toggle('role-auth', isAuthed());
 }
 
@@ -3043,7 +3057,15 @@ function openProfile(id){
   }
   let admin="";
   if(isAdmin()){
-    admin = `<div class="field"><label class="f" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="pf_isadmin" ${m.role==='admin'?'checked':''} style="width:auto;margin:0">Group admin (full permissions)</label></div>`;
+    const role = m.role==='admin' ? 'admin' : m.role==='patron' ? 'patron' : 'member';
+    admin = `<div class="field"><label class="f">Account type</label>
+      <select id="pf_role">
+        <option value="member"${role==='member'?' selected':''}>Member — full society member</option>
+        <option value="admin"${role==='admin'?' selected':''}>Group admin — full permissions</option>
+        <option value="patron"${role==='patron'?' selected':''}>Patron — supporter / follower</option>
+      </select>
+      <div class="secnote" style="margin-top:6px">Patrons appear in their own list with a distinct colour. Their permissions get defined next.</div>
+    </div>`;
   }
   $("#pf_admin").innerHTML = admin;
   $("#pf_remove").style.display = (isAdmin() && MEMBERS.length>1 && me && m.id!==me.id) ? "inline-block" : "none";
@@ -3060,9 +3082,11 @@ async function saveProfile(){
   if(pendingPic===null && m.pic){ patch.avatar_url=null; }
   else if(pendingPic && pendingPic!==m.pic){ const url=await uploadAvatar(pendingPic, m.id); if(url) patch.avatar_url=url; }
   if(isAdmin()){
-    const want = $("#pf_isadmin") && $("#pf_isadmin").checked;
-    if(!want && m.role==='admin' && MEMBERS.filter(x=>x.role==='admin').length<=1){ toast("Keep at least one admin"); return; }
-    patch.role = want ? 'admin' : 'member';
+    const sel = $("#pf_role");
+    const want = sel ? sel.value : m.role;
+    // never strand the group without an admin
+    if(want!=='admin' && m.role==='admin' && MEMBERS.filter(x=>x.role==='admin').length<=1){ toast("Keep at least one admin"); return; }
+    patch.role = (want==='admin'||want==='patron') ? want : 'member';
   }
   const { error }=await sb.from('profiles').update(patch).eq('id', m.id);
   if(error){ toast(friendly(error)); return; }
@@ -3082,6 +3106,36 @@ async function removeMember(){
 }
 
 /* ---- members tab ---- */
+function memberCardHTML(m, me, wagerById){
+  const canEdit = isAdmin() || (me && me.id===m.id);
+  const patron = m.role==='patron';
+  const r = myRank(m.id);
+  const stat = r
+    ? `<div class="mstat"><span class="mtot">${r.total}</span><span class="ml">total · ${r.count} round${r.count===1?'':'s'}</span></div>
+       <div class="mrank">${["🥇","🥈","🥉"][r.rank-1]||('#'+r.rank)} of ${r.of}</div>`
+    : `<div class="mstat none">No rounds logged yet</div>`;
+  const ag = memberAge(m);
+  const lows = SCORES.filter(s=>s.by===m.id).map(s=>Number(s.score)).filter(n=>!isNaN(n));
+  const low = lows.length ? Math.min(...lows) : null;
+  const wnet = wagerById[m.id] ? wagerById[m.id].net : 0;
+  const hasWagers = !!wagerById[m.id];
+  const wColor = wnet>0?'var(--fairway)':wnet<0?'var(--flag)':'var(--ink-soft)';
+  const quick = `<div class="mquick">
+      <div class="mq"><span class="mq-l">Lowest</span><span class="mq-v">${low!=null?low:'\u2014'}</span></div>
+      <div class="mq"><span class="mq-l">Wagers</span><span class="mq-v" style="color:${wColor}">${hasWagers?netMoney(wnet):'\u2014'}</span></div>
+    </div>`;
+  const roleTag = m.role==='admin' ? `<div class="mrole">Admin</div>`
+                : patron ? `<div class="mrole">Patron</div>` : ``;
+  return `<div class="mcard${patron?' patron':''}">${avatarHTML(m,76)}
+    <div class="mname">${esc(m.name)}</div>
+    ${roleTag}
+    <div class="mmeta">Hcp ${m.handicap?esc(m.handicap):'\u2014'}${ag!=null?(' \u00b7 '+esc(ag)+'y'):''}</div>
+    ${stat}
+    ${quick}
+    ${me&&me.id===m.id?`<div class="you">This is you</div>`:``}
+    ${canEdit?`<button class="btn ghost tiny" onclick="openProfile('${m.id}')">Edit</button>`:``}
+  </div>`;
+}
 function renderMembers(){
   const body=$("#membersBody"), acts=$("#memberActions"); if(!body) return;
   const me=ME();
@@ -3092,33 +3146,28 @@ function renderMembers(){
     body.innerHTML = `<div class="empty"><h3>No members yet</h3><p>Create the first account to get started, then your group can join and set up profiles.</p><div class="row"><button class="btn" onclick="openAuth('join')">Create an account</button></div></div>`;
     return;
   }
-  body.innerHTML = `<div class="mgrid">` + MEMBERS.map(m=>{
-    const canEdit = isAdmin() || (me && me.id===m.id);
-    const r = myRank(m.id);
-    const stat = r
-      ? `<div class="mstat"><span class="mtot">${r.total}</span><span class="ml">total · ${r.count} round${r.count===1?'':'s'}</span></div>
-         <div class="mrank">${["🥇","🥈","🥉"][r.rank-1]||('#'+r.rank)} of ${r.of}</div>`
-      : `<div class="mstat none">No rounds logged yet</div>`;
-    const ag = memberAge(m);
-    const lows = SCORES.filter(s=>s.by===m.id).map(s=>Number(s.score)).filter(n=>!isNaN(n));
-    const low = lows.length ? Math.min(...lows) : null;
-    const wnet = wagerById[m.id] ? wagerById[m.id].net : 0;
-    const hasWagers = !!wagerById[m.id];
-    const wColor = wnet>0?'var(--fairway)':wnet<0?'var(--flag)':'var(--ink-soft)';
-    const quick = `<div class="mquick">
-        <div class="mq"><span class="mq-l">Lowest</span><span class="mq-v">${low!=null?low:'\u2014'}</span></div>
-        <div class="mq"><span class="mq-l">Wagers</span><span class="mq-v" style="color:${wColor}">${hasWagers?netMoney(wnet):'\u2014'}</span></div>
-      </div>`;
-    return `<div class="mcard">${avatarHTML(m,76)}
-      <div class="mname">${esc(m.name)}</div>
-      ${m.role==='admin'?`<div class="mrole">Admin</div>`:``}
-      <div class="mmeta">Hcp ${m.handicap?esc(m.handicap):'\u2014'}${ag!=null?(' \u00b7 '+esc(ag)+'y'):''}</div>
-      ${stat}
-      ${quick}
-      ${me&&me.id===m.id?`<div class="you">This is you</div>`:``}
-      ${canEdit?`<button class="btn ghost tiny" onclick="openProfile('${m.id}')">Edit</button>`:``}
-    </div>`;
-  }).join("") + `</div>`;
+  const members = MEMBERS.filter(m=>m.role!=='patron');
+  const patrons = MEMBERS.filter(m=>m.role==='patron');
+
+  const membersBlock = `
+    <div class="members-section">
+      <h3 class="dest-section-title">Members</h3>
+      <p class="dest-section-sub">The society — players in the rota.</p>
+    </div>
+    ${members.length
+      ? `<div class="mgrid">${members.map(m=>memberCardHTML(m, me, wagerById)).join("")}</div>`
+      : `<p style="color:var(--mut-on-pine);font-size:14px;margin:4px 2px">No members yet.</p>`}`;
+
+  const patronsBlock = `
+    <div class="members-section">
+      <h3 class="dest-section-title">Patrons</h3>
+      <p class="dest-section-sub">Supporters following along and tracking their own progress.</p>
+    </div>
+    ${patrons.length
+      ? `<div class="mgrid">${patrons.map(m=>memberCardHTML(m, me, wagerById)).join("")}</div>`
+      : `<p style="color:var(--mut-on-pine);font-size:14px;margin:4px 2px">No patrons yet.${isAdmin()?' Edit anyone\u2019s profile and set their account type to \u201CPatron\u201D to add one.':''}</p>`}`;
+
+  body.innerHTML = membersBlock + patronsBlock;
 }
 
 /* ---- personal score logging (feeds the cumulative leaderboard) ---- */
