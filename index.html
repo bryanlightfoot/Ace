@@ -375,6 +375,13 @@
   .mw-card.s-completed{border-left-color:var(--brass-deep)}
   .mw-card.s-declined{border-left-color:var(--flag)}
   .mw-empty{color:var(--ink-soft);font-size:14px;padding:18px 4px}
+  .mw-pending{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin:2px 0 4px;padding:12px 15px;border:1px solid var(--rule);border-radius:10px;
+    background:rgba(196,154,74,.12)}
+  .mw-pending .l{font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--brass-deep);font-weight:700}
+  .mw-pending .sub{display:block;font-size:11px;color:var(--ink-soft);margin-top:3px;letter-spacing:0;text-transform:none}
+  .mw-pending .v{font-family:"Bodoni Moda",serif;font-weight:900;font-size:26px;color:var(--ink);line-height:1}
   .wg-terms{font-size:15px;color:var(--ink);line-height:1.4;white-space:pre-wrap}
   .wg-by{font-size:12px;color:var(--ink-soft)}
   .wg-parties{display:flex;flex-wrap:wrap;gap:7px}
@@ -1755,9 +1762,15 @@ function renderMyWagers(){
   const pend   = mineAll.filter(w=>w.status==='unaccepted');
   const active = mineAll.filter(w=>w.status==='accepted');
   const hist   = mineAll.filter(w=>w.status==='completed'||w.status==='declined');
+  // running stake across everything not yet settled (proposed + accepted)
+  const pendingTotal = pend.concat(active).reduce((s,w)=> s + (Number(w.amount)||0), 0);
+  const pendingBar = (pend.length+active.length)
+    ? `<div class="mw-pending"><div><span class="l">Pending</span><span class="sub">on the line, not yet settled</span></div><span class="v">${money(pendingTotal)}</span></div>`
+    : '';
   const sec=(title,list,fn)=> list.length?`<div class="mw-sec"><h4 class="mw-h">${title}</h4>${list.map(fn).join('')}</div>`:'';
   body.innerHTML =
-    (sec('Pending · waiting on you', pend, mwPendingCard)
+    (pendingBar
+    + sec('Pending · waiting on you', pend, mwPendingCard)
     + sec('Accepted · note the outcome', active, mwActiveCard)
     + sec('Your history', hist, mwHistoryCard))
     || `<div class="mw-empty">Nothing here yet.</div>`;
