@@ -1163,12 +1163,21 @@ function memberAge(m){
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),1900); }
 const sortedTrips = ()=> [...TRIPS].sort((a,b)=> (b.year||0)-(a.year||0));
 function friendly(e){
-  const msg = (e && e.message) || String(e || "Something went wrong");
+  let msg = '';
+  if(e){
+    if(typeof e==='string') msg = e;
+    else msg = e.message || e.error_description || e.msg || e.error_description ||
+               (typeof e.error==='string'?e.error:'') || e.hint || e.details || '';
+    if(!msg){ try{ const j=JSON.stringify(e); if(j && j!=='{}' && j!=='[]') msg=j; }catch(_){} }
+  }
+  if(!msg || msg==='{}' || msg==='[object Object]') msg = 'Something went wrong';
   if(/duplicate key/i.test(msg)) return "That's already there";
   if(/row-level security|violates row-level/i.test(msg)) return "You don't have permission for that";
   if(/Invalid login/i.test(msg)) return "Email or password is wrong";
   if(/already registered/i.test(msg)) return "That email already has an account — try signing in";
   if(/Email not confirmed/i.test(msg)) return "Confirm your email first, then sign in";
+  if(/Database error saving new user|unexpected_failure/i.test(msg)) return "Couldn't save the account — the database rejected it (check the profiles.role values allow 'patron')";
+  if(/violates check constraint/i.test(msg) && /role/i.test(msg)) return "The account role isn't allowed yet — add 'patron' to the profiles.role check constraint";
   return msg;
 }
 
@@ -3217,7 +3226,8 @@ async function doJoin(){
   if(patron){ patch.role='patron'; }
   else { patch.handicap=hcap; patch.birthday=dob; patch.age=age; }
   if(photo){ const url=await uploadAvatar(photo, MYID); if(url) patch.avatar_url=url; }
-  await sb.from('profiles').update(patch).eq('id',MYID);
+  const { error:upErr } = await sb.from('profiles').update(patch).eq('id',MYID);
+  if(upErr){ toast(friendly(upErr)); return; }
   try{ localStorage.removeItem('ace_pending_avatar:'+MYID); }catch(e){}
   closeModal('authScrim'); await reload(); toast("Welcome, "+name);
 }
