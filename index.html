@@ -3303,6 +3303,16 @@ async function removeMember(){
 function memberCardHTML(m, me, wagerById){
   const canEdit = isAdmin() || (me && me.id===m.id);
   const patron = m.role==='patron';
+  const isYou = me && me.id===m.id;
+  // Patrons carry no stats — just their picture, name and the Patron tag.
+  if(patron){
+    return `<div class="mcard patron">${avatarHTML(m,76)}
+      <div class="mname">${esc(m.name)}</div>
+      <div class="mrole">Patron</div>
+      ${isYou?`<div class="you">This is you</div>`:``}
+      ${canEdit?`<button class="btn ghost tiny" onclick="openProfile('${m.id}')">Edit</button>`:``}
+    </div>`;
+  }
   const r = myRank(m.id);
   const stat = r
     ? `<div class="mstat"><span class="mtot">${r.total}</span><span class="ml">total · ${r.count} round${r.count===1?'':'s'}</span></div>
@@ -3318,15 +3328,14 @@ function memberCardHTML(m, me, wagerById){
       <div class="mq"><span class="mq-l">Lowest</span><span class="mq-v">${low!=null?low:'\u2014'}</span></div>
       <div class="mq"><span class="mq-l">Wagers</span><span class="mq-v" style="color:${wColor}">${hasWagers?netMoney(wnet):'\u2014'}</span></div>
     </div>`;
-  const roleTag = m.role==='admin' ? `<div class="mrole">Admin</div>`
-                : patron ? `<div class="mrole">Patron</div>` : ``;
-  return `<div class="mcard${patron?' patron':''}">${avatarHTML(m,76)}
+  const roleTag = m.role==='admin' ? `<div class="mrole">Admin</div>` : ``;
+  return `<div class="mcard">${avatarHTML(m,76)}
     <div class="mname">${esc(m.name)}</div>
     ${roleTag}
     <div class="mmeta">Hcp ${m.handicap?esc(m.handicap):'\u2014'}${ag!=null?(' \u00b7 '+esc(ag)+'y'):''}</div>
     ${stat}
     ${quick}
-    ${me&&me.id===m.id?`<div class="you">This is you</div>`:``}
+    ${isYou?`<div class="you">This is you</div>`:``}
     ${canEdit?`<button class="btn ghost tiny" onclick="openProfile('${m.id}')">Edit</button>`:``}
   </div>`;
 }
@@ -3647,8 +3656,10 @@ async function syncProfileFromMetadata(){
     if(!me.birthday && md.birthday) patch.birthday = md.birthday;
     if((me.age==null||me.age==='') && md.age!=null && md.age!=='') patch.age = md.age;
     // patrons sign up with no PIN; their role rides in metadata until first login.
-    // Only apply while still the default 'member', so an admin's later change sticks.
-    if(md.signup_role==='patron' && me.role==='member') patch.role = 'patron';
+    // Apply whenever they aren't already a patron or an admin (covers a default
+    // role of 'member', null or ''), then the flag is cleared below so a later
+    // admin change is never undone.
+    if(md.signup_role==='patron' && me.role!=='patron' && me.role!=='admin') patch.role = 'patron';
 
     // Photo chosen at sign-up was stashed locally (no session existed yet).
     // Now that we're authenticated, upload it and attach the URL.
