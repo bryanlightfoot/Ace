@@ -1188,6 +1188,12 @@ const isAdmin = ()=> { const m=ME(); return !!m && m.role==='admin'; };
 const isPatron = ()=> { const m=ME(); return !!m && m.role==='patron'; };
 /* a profile counts as a "member" unless it's explicitly a patron */
 const isMemberRole = m => !!m && m.role==='patron' ? false : true;
+/* guard for member-only actions — patrons may like/dislike/comment and run
+   wagers, but not upload media, log rounds, or vote on trips */
+function patronBlock(what){
+  if(isPatron()){ toast("Patrons can't "+(what||"do that")+" — that's for trip members"); return true; }
+  return false;
+}
 
 /* ============================================================
    2. LOAD — pull every table and reshape into the app's shapes
@@ -1510,7 +1516,7 @@ function renderWagerLeaderboard(){
 }
 function renderRecord(){
   const acts = $("#recordActions");
-  if(acts) acts.innerHTML = `${isAuthed()?`<button class="btn" onclick="openScoreModal()">+ Log a score</button>`:''}${isAdmin()?`<button class="btn ghost" onclick="openManageScores()">Manage rounds</button>`:''}`;
+  if(acts) acts.innerHTML = `${(isAuthed()&&!isPatron())?`<button class="btn" onclick="openScoreModal()">+ Log a score</button>`:''}${isAdmin()?`<button class="btn ghost" onclick="openManageScores()">Manage rounds</button>`:''}`;
   renderLeaderboard();
   renderWagerLeaderboard();
   const list = $("#recordList");
@@ -2237,13 +2243,14 @@ function renderVote(){
   const el = $("#voteBody"); if(!el) return;
   const c = voteCounts();
   const me = ME();
+  const canVote = !!me && !isPatron();
   const myOpt = MYVOTE ? MYVOTE.option : null;
   lastVoteSel = myOpt;
   const myDest = MYVOTE ? MYVOTE.dest : null;
   const optRow = (o, count) => {
     const label = o.label, sel = myOpt===label, mine = MYVOTE && MYVOTE.option===label;
     return `<label class="voteopt ${o.image?'withimg':''} ${sel?'sel':''} ${mine?'mine':''}">
-      <input type="radio" name="vote2027" value="${esc(label)}" ${sel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
+      <input type="radio" name="vote2027" value="${esc(label)}" ${sel?'checked':''} ${canVote?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
       ${o.image?`<img class="vthumb" src="${esc(o.image)}" alt="" title="View photo" onclick="event.preventDefault();event.stopPropagation();openLightbox('${esc(o.image)}')">`:''}
       <span class="vlabel">${esc(label)}${mine?'<span class="vmine">✓ your vote</span>':''}</span>
       <span class="vtally">${count}</span>
@@ -2254,7 +2261,7 @@ function renderVote(){
   const anySel = myOpt===ANY_PREV;
   const destOpts = historicDests().map(d=>`<option value="${d.id}" ${anySel&&myDest===d.id?'selected':''}>${esc(d.name)}</option>`).join('');
   const anyRow = `<label class="voteopt ${anySel?'sel':''} ${anySel?'mine':''}">
-    <input type="radio" id="vote_any" name="vote2027" value="${esc(ANY_PREV)}" ${anySel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
+    <input type="radio" id="vote_any" name="vote2027" value="${esc(ANY_PREV)}" ${anySel?'checked':''} ${canVote?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
     <span class="vlabel">Any previous trip${anySel?'<span class="vmine">✓ your vote</span>':''}</span>
     ${DESTS.length?`<select id="vote_prevdest" onclick="event.stopPropagation()" onchange="var r=document.getElementById('vote_any'); if(r&&!r.disabled){ r.checked=true; vSel(r); }">${destOpts}</select>`:`<span style="font-size:12px;color:var(--ink-soft)">No previous trips yet</span>`}
     <span class="vtally">${c.anyTotal}</span>
@@ -2278,11 +2285,12 @@ function renderVote(){
       ${breakdown}
       ${VOTE_OPTIONS.length===0?'<p class="secnote">No trips to vote on yet.'+(isAdmin()?' Use “+ Add a trip” to suggest some.':'')+'</p>':''}
     </div>
-    ${ me && MYVOTE ? `<p class="secnote" style="margin-top:14px">Your vote is locked in above. To change it, pick a different option and choose <strong>Update my vote</strong> — your original is removed from the count automatically.</p>` : '' }
-    ${ me ? `<div class="modal-foot" style="margin-top:18px">
+    ${ canVote && MYVOTE ? `<p class="secnote" style="margin-top:14px">Your vote is locked in above. To change it, pick a different option and choose <strong>Update my vote</strong> — your original is removed from the count automatically.</p>` : '' }
+    ${ canVote ? `<div class="modal-foot" style="margin-top:18px">
         ${MYVOTE?`<button class="btn ghost" onclick="clearMyVote()">Withdraw my vote</button>`:'<span></span>'}
         <button class="btn" style="margin-left:auto" onclick="castVote()">${MYVOTE?'Update my vote':'Cast my vote'}</button>
       </div>`
+      : me ? `<div class="secnote" style="margin-top:18px">Patrons can follow the vote, but only trip members cast a vote.</div>`
       : `<div class="secnote" style="margin-top:18px"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to cast your vote.</div>` }
     ${ leader&&leader.count>0 ? `<div style="margin-top:14px;font-size:13px;color:var(--ink-soft)">Leading: <strong style="color:var(--ink)">${esc(leader.label)}</strong> with ${leader.count} vote${leader.count===1?'':'s'}.</div>`:'' }
   </div></div>`;
@@ -2301,7 +2309,7 @@ function checkVoteRadio(v){
 }
 function vSel(el){ voteSelectRow(el); }   // highlight only; tracking happens in vClick
 function vClick(el){
-  if(el.disabled) return;
+  if(el.disabled || isPatron()) return;
   const myCast = MYVOTE ? MYVOTE.option : null;
   if(myCast){
     // A vote is already cast — that option is the locked baseline and can't be cleared to nothing.
@@ -2317,7 +2325,7 @@ function vClick(el){
     lastVoteSel=el.value; voteSelectRow(el);
   }
 }
-async function castVote(){ if(gateBlock())return;
+async function castVote(){ if(gateBlock())return; if(patronBlock("vote on trips"))return;
   if(!isAuthed()){ toast("Sign in to vote"); openAuth('signin'); return; }
   const sel = document.querySelector('input[name=vote2027]:checked');
   if(!sel){ toast("Pick an option first"); return; }
@@ -2335,7 +2343,7 @@ async function castVote(){ if(gateBlock())return;
   if(error){ toast(friendly(error)); return; }
   await reload(); go('clubhouse'); toast(wasUpdate?"Vote updated":"Vote cast");
 }
-async function clearMyVote(){ if(gateBlock())return;
+async function clearMyVote(){ if(gateBlock())return; if(patronBlock("vote on trips"))return;
   if(!isAuthed()) return;
   const { error } = await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
   if(error){ toast(friendly(error)); return; }
@@ -3397,6 +3405,7 @@ function pairingCourses(){
 }
 function openScoreModal(){
   if(!isAuthed()){ openAuth('signin'); return; }
+  if(patronBlock("log rounds"))return;
   $("#sc_score").value='';
   const courses = pairingCourses();
   const sel=$("#sc_course");
@@ -3419,6 +3428,7 @@ function renderMyScores(){
 }
 async function addMyScore(){
   const me=ME(); if(!me) return;
+  if(patronBlock("log rounds"))return;
   const sc=intOrNull($("#sc_score").value);
   if(sc==null||isNaN(sc)){ toast("Enter a score"); return; }
   const course=($("#sc_course").value||'').trim();
@@ -3454,7 +3464,7 @@ function outstandingPairings(meId){
     return !SCORES.some(s=> s.by===meId && s.pairing===p.id);
   });
 }
-function scoreGateActive(){ return isAuthed() && outstandingPairings(MYID).length>0; }
+function scoreGateActive(){ return isAuthed() && !isPatron() && outstandingPairings(MYID).length>0; }
 /* guard for every member action — returns true (and re-shows the gate) when blocked */
 function gateBlock(){
   if(scoreGateActive()){ enforceScoreGate(); toast("Log your score for the closed matchup first"); return true; }
@@ -3466,7 +3476,7 @@ function gateOutcomeText(p, side){
 }
 function enforceScoreGate(){
   const list=$("#gate_list");
-  if(!isAuthed()){ closeModal('gateScrim'); return; }
+  if(!isAuthed() || isPatron()){ closeModal('gateScrim'); return; }
   const out=outstandingPairings(MYID);
   if(!out.length){ closeModal('gateScrim'); return; }
   if(list){
@@ -3492,6 +3502,7 @@ function enforceScoreGate(){
 }
 async function logPairingScore(pid){
   const me=ME(); if(!me) return;
+  if(patronBlock("log rounds"))return;
   const p=PAIRINGS.find(x=>x.id===pid); if(!p) return;
   const inp=document.getElementById('gate_sc_'+pid);
   const sc=intOrNull(inp ? inp.value : null);
@@ -3540,7 +3551,7 @@ async function adminDeleteScore(id){
    GALLERY
    ============================================================ */
 let pendingGallery = null;
-function readGalleryFile(input){ if(gateBlock())return;
+function readGalleryFile(input){ if(gateBlock())return; if(patronBlock("upload photos"))return;
   const f = input.files && input.files[0]; if(!f) return;
   const r = new FileReader();
   r.onload = function(e){
@@ -3576,7 +3587,7 @@ async function uploadGalleryImage(dataUrl, uid){
     return data.publicUrl;
   }catch(e){ return null; }
 }
-async function confirmGalleryUpload(){ if(gateBlock())return;
+async function confirmGalleryUpload(){ if(gateBlock())return; if(patronBlock("upload photos"))return;
   const me=ME(); if(!me){ openAuth('signin'); return; }
   if(!pendingGallery){ closeModal('galleryScrim'); return; }
   const trip = ($("#gl_trip") ? $("#gl_trip").value : "").trim();
@@ -3623,12 +3634,13 @@ function closeLightbox(){
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeLightbox(); });
 function renderGallery(){
   const body=$("#galleryBody"), acts=$("#galleryActions"); if(!body) return;
-  const me=ME();
-  acts.innerHTML = me
+  const me=ME(); const patron=isPatron();
+  acts.innerHTML = (me && !patron)
     ? `<label class="btn" for="gl_file">+ Add a photo</label><input id="gl_file" type="file" accept="image/*" style="display:none" onchange="readGalleryFile(this)">`
+    : me ? `<span class="secnote">Patrons can like &amp; comment — only members add photos.</span>`
     : `<button class="btn" onclick="openAuth('signin')">Sign in to add photos</button>`;
   if(!GALLERY.length){
-    body.innerHTML = `<div class="empty"><h3>No photos yet</h3><p>Share moments from the trips — the fairways, the clubhouse, the trophy presentations. Any signed-in member can add a photo and tag it to a trip.</p>${me?`<div class="row"><label class="btn" for="gl_file2">Add the first photo</label><input id="gl_file2" type="file" accept="image/*" style="display:none" onchange="readGalleryFile(this)"></div>`:''}</div>`;
+    body.innerHTML = `<div class="empty"><h3>No photos yet</h3><p>Share moments from the trips — the fairways, the clubhouse, the trophy presentations. Any signed-in member can add a photo and tag it to a trip.</p>${(me&&!patron)?`<div class="row"><label class="btn" for="gl_file2">Add the first photo</label><input id="gl_file2" type="file" accept="image/*" style="display:none" onchange="readGalleryFile(this)"></div>`:''}</div>`;
     return;
   }
   // group photos by trip (stored in caption)
