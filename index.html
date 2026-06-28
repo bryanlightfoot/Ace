@@ -3152,7 +3152,6 @@ function renderMembers(){
   const membersBlock = `
     <div class="members-section">
       <h3 class="dest-section-title">Members</h3>
-      <p class="dest-section-sub">The society — players in the rota.</p>
     </div>
     ${members.length
       ? `<div class="mgrid">${members.map(m=>memberCardHTML(m, me, wagerById)).join("")}</div>`
@@ -3161,11 +3160,11 @@ function renderMembers(){
   const patronsBlock = `
     <div class="members-section">
       <h3 class="dest-section-title">Patrons</h3>
-      <p class="dest-section-sub">Supporters following along and tracking their own progress.</p>
+      <p class="dest-section-sub">Supporters following along.</p>
     </div>
     ${patrons.length
       ? `<div class="mgrid">${patrons.map(m=>memberCardHTML(m, me, wagerById)).join("")}</div>`
-      : `<p style="color:var(--mut-on-pine);font-size:14px;margin:4px 2px">No patrons yet.${isAdmin()?' Edit anyone\u2019s profile and set their account type to \u201CPatron\u201D to add one.':''}</p>`}`;
+      : ``}`;
 
   body.innerHTML = membersBlock + patronsBlock;
 }
