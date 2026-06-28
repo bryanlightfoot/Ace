@@ -116,6 +116,9 @@
   #leaderboardBody{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #leaderboardBody > .card{margin-bottom:0!important}
   @media(max-width:760px){#leaderboardBody{grid-template-columns:1fr}}
+  .hof-section{max-width:860px;margin:36px auto 0;text-align:center}
+  .hof-head{margin-bottom:14px}
+  .hof-section #fameBody{text-align:left}
 
   /* ---------- hero / champion plate ---------- */
   .hero .pad{padding:30px 30px 30px 40px}
@@ -604,7 +607,6 @@
   <nav class="tabs" id="tabs">
     <button data-v="clubhouse" class="on">Clubhouse</button>
     <button data-v="record">The Record</button>
-    <button data-v="fame">Hall of Fame</button>
     <button data-v="dests">Destinations</button>
     <button data-v="pairings">Pairings</button>
     <button data-v="gallery">Gallery</button>
@@ -624,16 +626,14 @@
         <div id="recordActions"></div>
       </div>
       <div id="leaderboardBody"></div>
-      <div id="recordList"></div>
-    </section>
-
-    <!-- ============ HALL OF FAME ============ -->
-    <section class="view" id="fame">
-      <div class="head-row">
-        <div><p class="eyebrow" style="color:var(--brass)">Legends</p>
-          <h2 class="disp" style="color:var(--paper-on-pine)">Hall of Fame</h2></div>
+      <div class="hof-section">
+        <div class="hof-head">
+          <p class="eyebrow" style="color:var(--brass)">Legends</p>
+          <h2 class="disp" style="color:var(--paper-on-pine);margin:0">Hall of Fame</h2>
+        </div>
+        <div id="fameBody"></div>
       </div>
-      <div id="fameBody"></div>
+      <div id="recordList"></div>
     </section>
 
     <!-- ============ DESTINATIONS ============ -->
