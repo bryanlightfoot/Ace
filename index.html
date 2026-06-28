@@ -1002,6 +1002,12 @@ const sb = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON
 /* ---- Group PIN required to create an account ---- */
 const JOIN_PIN = "0001";
 
+/* ---- Canonical site URL. Confirmation emails redirect here, so it must be
+   the live domain (not window.location.origin, which can resolve to
+   localhost during testing). Must also be listed under
+   Supabase → Authentication → URL Configuration → Redirect URLs. ---- */
+const SITE_URL = "https://ace-developments.com";
+
 /* ---- Gallery trips: the dropdown choices when adding a photo.
    Edit this list to add/rename trips. (Later these could be
    pulled automatically from the Destinations tab.) ---- */
@@ -2738,7 +2744,7 @@ async function doJoin(){
   const pw2=$("#jn_pw2").value; if(pw!==pw2){ toast("Passwords don't match — check both fields"); return; }
   const pin=($("#jn_pin")?$("#jn_pin").value:"").trim(); if(pin!==JOIN_PIN){ toast("Incorrect group PIN — ask an admin"); return; }
   const photo=pendingPic;
-  const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ emailRedirectTo: window.location.origin, data:{ name, handicap:hcap, birthday:dob, age } } });
+  const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ emailRedirectTo: SITE_URL, data:{ name, handicap:hcap, birthday:dob, age } } });
   if(error){ toast(friendly(error)); return; }
   // Supabase returns a user with an empty `identities` array when the email is
   // already registered (its enumeration-protection behaviour). Treat that as a
@@ -2746,6 +2752,12 @@ async function doJoin(){
   if(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
     toast("That email is already registered — sign in instead, or reset your password");
     return;
+  }
+  // Stash the chosen photo locally. When email confirmation is on there's no
+  // session yet, so we can't upload to storage (RLS needs auth). syncProfile-
+  // FromMetadata picks this up and uploads it on the first authenticated load.
+  if(photo && data && data.user){
+    try{ localStorage.setItem('ace_pending_avatar:'+data.user.id, photo); }catch(e){}
   }
   if(!data.session){
     closeModal('authScrim');
@@ -2756,6 +2768,7 @@ async function doJoin(){
   const patch={ name, handicap:hcap, birthday:dob, age };
   if(photo){ const url=await uploadAvatar(photo, MYID); if(url) patch.avatar_url=url; }
   await sb.from('profiles').update(patch).eq('id',MYID);
+  try{ localStorage.removeItem('ace_pending_avatar:'+MYID); }catch(e){}
   closeModal('authScrim'); await reload(); toast("Welcome, "+name);
 }
 
@@ -3050,16 +3063,30 @@ async function syncProfileFromMetadata(){
     if(!MYID) return false;
     const me = MEMBERS.find(x=>x.id===MYID);
     if(!me) return false;
-    const missing = (me.handicap==null||me.handicap==='') || !me.birthday || (me.age==null||me.age==='');
-    if(!missing) return false;
     const { data:{ user } } = await sb.auth.getUser();
     const md = (user && user.user_metadata) || {};
     const patch={};
+    if((me.name==null||me.name==='') && md.name) patch.name = md.name;
     if((me.handicap==null||me.handicap==='') && md.handicap) patch.handicap = md.handicap;
     if(!me.birthday && md.birthday) patch.birthday = md.birthday;
     if((me.age==null||me.age==='') && md.age!=null && md.age!=='') patch.age = md.age;
-    if(!Object.keys(patch).length) return false;
+
+    // Photo chosen at sign-up was stashed locally (no session existed yet).
+    // Now that we're authenticated, upload it and attach the URL.
+    let pendingAvatar=null;
+    try{ pendingAvatar = localStorage.getItem('ace_pending_avatar:'+MYID); }catch(e){}
+    if(pendingAvatar && !me.pic){
+      const url = await uploadAvatar(pendingAvatar, MYID);
+      if(url) patch.avatar_url = url;
+    }
+
+    if(!Object.keys(patch).length){
+      // Nothing left to write — clear a stale stash if the photo already landed.
+      if(pendingAvatar && me.pic){ try{ localStorage.removeItem('ace_pending_avatar:'+MYID); }catch(e){} }
+      return false;
+    }
     const { error } = await sb.from('profiles').update(patch).eq('id', MYID);
+    if(!error){ try{ localStorage.removeItem('ace_pending_avatar:'+MYID); }catch(e){} }
     return !error;
   }catch(e){ return false; }
 }
