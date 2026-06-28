@@ -379,6 +379,10 @@
   .mcard .mstat.none{font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-soft);background:transparent;border:0;padding:4px 0}
   .mcard .mrank{font-family:"Spline Sans Mono",monospace;font-size:12px;font-weight:600;color:var(--brass-deep)}
   .myrounds{display:flex;flex-direction:column;gap:6px}
+  .ms-block{margin-top:14px}
+  .ms-head{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .ms-head .ms-name{font-weight:700;color:var(--ink)}
+  .ms-head .ms-tot{margin-left:auto;font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
   .roundrow{display:flex;align-items:center;gap:10px;border:1px solid var(--rule);border-radius:8px;padding:7px 11px;background:var(--paper)}
   .roundrow .rs{font-family:"Bodoni Moda",serif;font-weight:700;font-size:17px;color:var(--fairway);min-width:34px}
   .roundrow .rl{flex:1;font-size:13px;color:var(--ink-soft)}
@@ -867,6 +871,16 @@
   </div>
 </div>
 
+<!-- ===== MANAGE ROUNDS (admin) MODAL ===== -->
+<div class="scrim" id="manageScoresScrim">
+  <div class="modal">
+    <h3>Manage logged rounds</h3>
+    <p class="sub">Remove any member's logged round from The Record. Their cumulative leaderboard total and the stat on their Members card update right away.</p>
+    <div id="manageScoresBody"></div>
+    <div class="modal-foot"><div style="margin-left:auto"><button class="btn" onclick="closeModal('manageScoresScrim')">Done</button></div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -1200,7 +1214,7 @@ function renderLeaderboard(){
 }
 function renderRecord(){
   const acts = $("#recordActions");
-  if(acts) acts.innerHTML = `${isAuthed()?`<button class="btn" onclick="openScoreModal()">+ Log a score</button>`:''}`;
+  if(acts) acts.innerHTML = `${isAuthed()?`<button class="btn" onclick="openScoreModal()">+ Log a score</button>`:''}${isAdmin()?`<button class="btn ghost" onclick="openManageScores()">Manage rounds</button>`:''}`;
   renderLeaderboard();
   const list = $("#recordList");
   if(!TRIPS.length){ list.innerHTML = `<div class="empty"><h3>No trips on the books yet</h3><p>The cumulative leaderboard above fills in as members log their rounds. Trip history will appear here once trips are recorded.</p></div>`; return; }
@@ -2106,6 +2120,9 @@ async function saveTrip(){
 }
 async function deleteTrip(){
   if(!editingTrip) return;
+  if(!confirm("Remove this trip and everything logged under it (scores, aces, champion)? This can't be undone.")) return;
+  await sb.from('results').delete().eq('trip_id',editingTrip);
+  await sb.from('aces').delete().eq('trip_id',editingTrip);
   const { error }=await sb.from('trips').delete().eq('id',editingTrip);
   if(error){ toast(friendly(error)); return; }
   closeModal("tripScrim"); await reload(); toast("Trip removed");
@@ -2469,6 +2486,28 @@ async function deleteMyScore(id){
   await reload(); renderMyScores(); toast("Round removed");
 }
 
+/* ---- admin: manage any member's logged rounds (The Record) ---- */
+function openManageScores(){ if(!isAdmin()){ toast("Admins only"); return; } renderManageScores(); openModal('manageScoresScrim'); }
+function renderManageScores(){
+  const el=$("#manageScoresBody"); if(!el) return;
+  const withRounds = MEMBERS.map(m=>({ m, rounds: SCORES.filter(s=>s.by===m.id) })).filter(x=>x.rounds.length);
+  if(!withRounds.length){ el.innerHTML=`<div class="mw-empty">No rounds have been logged yet.</div>`; return; }
+  el.innerHTML = withRounds.map(({m,rounds})=>{
+    const total=rounds.reduce((a,s)=>a+(Number(s.score)||0),0);
+    return `<div class="ms-block">
+      <div class="ms-head">${avatarHTML(m,28)}<span class="ms-name">${esc(m.name)}</span><span class="ms-tot">${rounds.length} round${rounds.length===1?'':'s'} · ${total}</span></div>
+      <div class="myrounds">${rounds.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(s.course||s.label||'Round')}</span><button class="cmt-del" title="Delete" onclick="adminDeleteScore('${s.id}')">&times;</button></div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+async function adminDeleteScore(id){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  if(!confirm("Delete this logged round? The member's leaderboard total and Members stat will update.")) return;
+  const { error }=await sb.from('scores').delete().eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); renderManageScores(); toast("Round removed");
+}
+
 /* ============================================================
    GALLERY
    ============================================================ */
@@ -2582,7 +2621,7 @@ function renderGallery(){
 /* ============================================================
    Render all + boot
    ============================================================ */
-function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); }
+function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); if($("#manageScoresScrim")&&$("#manageScoresScrim").classList.contains('on')) renderManageScores(); }
 
 /* Backfill a profile from signup metadata. Needed because when email
    confirmation is on, signUp returns no session, so the profile write in
