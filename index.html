@@ -378,6 +378,11 @@
   .mcard .mstat .ml{font-family:"Spline Sans Mono",monospace;font-size:10px;letter-spacing:.05em;color:var(--ink-soft)}
   .mcard .mstat.none{font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-soft);background:transparent;border:0;padding:4px 0}
   .mcard .mrank{font-family:"Spline Sans Mono",monospace;font-size:12px;font-weight:600;color:var(--brass-deep)}
+  .mcard .mquick{display:flex;gap:8px;margin-top:10px;width:100%}
+  .mcard .mq{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;
+    border:1px solid var(--rule);border-radius:9px;background:rgba(196,154,74,.06)}
+  .mcard .mq-l{font-family:"Spline Sans Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+  .mcard .mq-v{font-family:"Bodoni Moda",serif;font-weight:700;font-size:16px;color:var(--ink)}
   .myrounds{display:flex;flex-direction:column;gap:6px}
   .ms-block{margin-top:14px}
   .ms-head{display:flex;align-items:center;gap:9px;margin-bottom:8px}
@@ -1244,10 +1249,35 @@ function renderLeaderboard(){
     </tr>`).join('')}</tbody></table>
   </div></div>`;
 }
+function renderWagerLeaderboard(){
+  const el=$("#leaderboardBody"); if(!el) return;
+  const { ranked } = wagerStandings();
+  if(!ranked.length){
+    el.insertAdjacentHTML('beforeend', `<div class="card" style="margin-bottom:16px"><div class="pad">
+      <p class="eyebrow" style="color:var(--brass-deep)">Wager standings · most won leads</p>
+      <p class="sub" style="margin-top:4px">No settled wagers yet. Standings appear here once a wager is resolved over in the Wagers tab.</p>
+    </div></div>`);
+    return;
+  }
+  const medal = i => ["🥇","🥈","🥉"][i] || `${i+1}`;
+  const me = ME();
+  const net = n => `<span style="color:${n>0?'var(--brass)':n<0?'var(--flag)':'var(--ink-soft)'};font-weight:700">${netMoney(n)}</span>`;
+  el.insertAdjacentHTML('beforeend', `<div class="card" style="margin-bottom:16px"><div class="pad">
+    <p class="eyebrow" style="color:var(--brass-deep)">Wager standings · most won leads, most lost trails</p>
+    <table class="hof" style="margin-top:10px"><thead><tr><th></th><th>Player</th><th class="r">Wagers</th><th class="r">Net</th></tr></thead>
+    <tbody>${ranked.map((r,i)=>`<tr${me&&me.id===r.id?' style="background:rgba(196,154,74,.1)"':''}>
+      <td class="medal">${medal(i)}</td>
+      <td class="who">${esc(r.name)}${me&&me.id===r.id?' <span style="color:var(--fairway);font-size:11px;font-weight:700">· you</span>':''}</td>
+      <td class="r">${r.count}</td>
+      <td class="r">${net(r.net)}</td>
+    </tr>`).join('')}</tbody></table>
+  </div></div>`);
+}
 function renderRecord(){
   const acts = $("#recordActions");
   if(acts) acts.innerHTML = `${isAuthed()?`<button class="btn" onclick="openScoreModal()">+ Log a score</button>`:''}${isAdmin()?`<button class="btn ghost" onclick="openManageScores()">Manage rounds</button>`:''}`;
   renderLeaderboard();
+  renderWagerLeaderboard();
   const list = $("#recordList");
   if(!TRIPS.length){ list.innerHTML = `<div class="empty"><h3>No trips on the books yet</h3><p>The cumulative leaderboard above fills in as members log their rounds. Trip history will appear here once trips are recorded.</p></div>`; return; }
   list.innerHTML = sortedTrips().map(t=>{
@@ -1395,6 +1425,37 @@ function wagerWinnerName(w){
   if(w.isPush) return "Push — bets off";
   const id = w.winnerId || w.proposedWinner;
   return id ? nameOf(id) : "—";
+}
+
+/* ---- wager money helpers + lifetime standings ----
+   A settled wager (status 'completed', a winner, not a push) is zero-sum:
+   the winner gains the stake, the losing parties split that stake evenly.
+   Pushes and unsettled wagers move no money. This feeds both the Record-tab
+   Wagers leaderboard and the per-member quick reference in Members. */
+const netMoney = n => {
+  const v = Math.round((Number(n)||0)*100)/100;
+  if(v>0) return '+'+money(v);
+  if(v<0) return '\u2212'+money(Math.abs(v));
+  return money(0);
+};
+function wagerStandings(){
+  const byId = {};
+  const ensure = id => (byId[id] = byId[id] || { id, net:0, won:0, lost:0, count:0 });
+  WAGERS.forEach(w=>{
+    if(w.status!=='completed' || w.isPush || !w.winnerId) return;
+    const amount = Number(w.amount); if(isNaN(amount) || amount<=0) return;
+    const losers = w.parties.filter(p=>p.pid && p.pid!==w.winnerId).map(p=>p.pid);
+    if(!losers.length) return;
+    const share = amount/losers.length;
+    const win = ensure(w.winnerId);
+    win.net += amount; win.won += amount; win.count++;
+    losers.forEach(pid=>{ const l=ensure(pid); l.net -= share; l.lost += share; l.count++; });
+  });
+  const ranked = MEMBERS
+    .map(m=> ({ ...(byId[m.id]||{ id:m.id, net:0, won:0, lost:0, count:0 }), name:m.name }))
+    .filter(r=> r.count>0)
+    .sort((a,b)=> b.net-a.net || b.won-a.won);
+  return { ranked, byId };
 }
 
 /* ---- create wager ---- */
@@ -2541,6 +2602,7 @@ async function removeMember(){
 function renderMembers(){
   const body=$("#membersBody"), acts=$("#memberActions"); if(!body) return;
   const me=ME();
+  const { byId:wagerById } = wagerStandings();
   acts.innerHTML = me ? `<button class="btn" onclick="openProfile('${me.id}')">Edit my profile</button>`
                       : `<button class="btn" onclick="openAuth('join')">Join the society</button>`;
   if(!MEMBERS.length){
@@ -2555,11 +2617,21 @@ function renderMembers(){
          <div class="mrank">${["🥇","🥈","🥉"][r.rank-1]||('#'+r.rank)} of ${r.of}</div>`
       : `<div class="mstat none">No rounds logged yet</div>`;
     const ag = memberAge(m);
+    const lows = SCORES.filter(s=>s.by===m.id).map(s=>Number(s.score)).filter(n=>!isNaN(n));
+    const low = lows.length ? Math.min(...lows) : null;
+    const wnet = wagerById[m.id] ? wagerById[m.id].net : 0;
+    const hasWagers = !!wagerById[m.id];
+    const wColor = wnet>0?'var(--brass)':wnet<0?'var(--flag)':'var(--ink-soft)';
+    const quick = `<div class="mquick">
+        <div class="mq"><span class="mq-l">Lowest</span><span class="mq-v">${low!=null?low:'\u2014'}</span></div>
+        <div class="mq"><span class="mq-l">Wagers</span><span class="mq-v" style="color:${wColor}">${hasWagers?netMoney(wnet):'\u2014'}</span></div>
+      </div>`;
     return `<div class="mcard">${avatarHTML(m,76)}
       <div class="mname">${esc(m.name)}</div>
       ${m.role==='admin'?`<div class="mrole">Admin</div>`:``}
       <div class="mmeta">Hcp ${m.handicap?esc(m.handicap):'\u2014'}${ag!=null?(' \u00b7 '+esc(ag)+'y'):''}</div>
       ${stat}
+      ${quick}
       ${me&&me.id===m.id?`<div class="you">This is you</div>`:``}
       ${canEdit?`<button class="btn ghost tiny" onclick="openProfile('${m.id}')">Edit</button>`:``}
     </div>`;
