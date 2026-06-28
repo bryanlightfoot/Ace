@@ -233,6 +233,12 @@
     display:flex;align-items:center;gap:12px}
   .dest-section-title::after{content:"";flex:1;height:1px;background:var(--pine-line)}
   .dest-section-sub{color:var(--mut-on-pine);font-size:13px;margin:2px 0 0}
+  .dp-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+  @media(max-width:900px){.dp-split{grid-template-columns:1fr}}
+  .dp-col{min-width:0}
+  .dp-col-title{font-family:"Bodoni Moda",serif;font-weight:700;font-size:26px;color:var(--paper-on-pine);margin:0}
+  .dp-col-sub{color:var(--mut-on-pine);font-size:13px;margin:2px 0 0}
+  .dp-historic{margin-top:24px}
   .dest.current{border-left-width:5px;border-left-color:var(--brass);position:relative}
   .dest.current .cur-badge{position:absolute;top:-10px;right:16px;background:var(--brass);color:var(--pine);
     font-family:"Spline Sans Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
@@ -607,8 +613,7 @@
   <nav class="tabs" id="tabs">
     <button data-v="clubhouse" class="on">Clubhouse</button>
     <button data-v="record">The Record</button>
-    <button data-v="dests">Destinations</button>
-    <button data-v="pairings">Pairings</button>
+    <button data-v="dests">Destinations / Pairings</button>
     <button data-v="gallery">Gallery</button>
     <button data-v="members">Members</button>
     <button data-v="wagers">Wagers</button>
@@ -636,26 +641,28 @@
       <div id="recordList"></div>
     </section>
 
-    <!-- ============ DESTINATIONS ============ -->
+    <!-- ============ DESTINATIONS / PAIRINGS ============ -->
     <section class="view" id="dests">
       <div class="head-row">
         <div><p class="eyebrow" style="color:var(--brass)">Where we've been · what it cost</p>
-          <h2 class="disp" style="color:var(--paper-on-pine)">Destinations</h2>
-          <p class="sub-on-pine">The current trip up top with its schedule and tee times, plus every place we've played. Members can like and comment.</p></div>
+          <h2 class="disp" style="color:var(--paper-on-pine)">Destinations / Pairings</h2>
+          <p class="sub-on-pine">The current trip and its schedule on the left, this trip's matchups on the right. Every place we've played sits below.</p></div>
         <button class="btn admin-only" onclick="openDestModal()">+ Add a destination</button>
       </div>
-      <div class="grid g3" id="destGrid"></div>
-    </section>
-
-    <!-- ============ PAIRINGS ============ -->
-    <section class="view" id="pairings">
-      <div class="head-row">
-        <div><p class="eyebrow" style="color:var(--brass)">Teams · current trip</p>
-          <h2 class="disp" style="color:var(--paper-on-pine)">Pairings</h2>
-          <p class="sub-on-pine">Tough competition, guaranteed winners and losers. Combined handicaps totalled automatically.</p></div>
-        <div id="pairingsActions"></div>
+      <div class="dp-split">
+        <div class="dp-col" id="destCurrent"></div>
+        <div class="dp-col">
+          <div class="head-row" style="margin-bottom:10px">
+            <div><h3 class="dp-col-title">Pairings</h3>
+              <p class="dp-col-sub">Teams for the current trip — combined handicaps totalled automatically.</p></div>
+            <div id="pairingsActions"></div>
+          </div>
+          <div id="pairingsBody"></div>
+        </div>
       </div>
-      <div id="pairingsBody"></div>
+      <div class="dp-historic">
+        <div id="destHistoric"></div>
+      </div>
     </section>
 
     <!-- ============ GALLERY ============ -->
@@ -2044,26 +2051,25 @@ function currentCard(d){
   </div>`;
 }
 function renderDests(){
-  const grid = $("#destGrid"); if(!grid) return;
-  if(!DESTS.length){ grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>No destinations yet</h3><p>Add the places we've played and what they cost per day. Members can then like and comment on each one.</p><div class="row"><button class="btn admin-only" onclick="openDestModal()">Add a destination</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`; return; }
+  const curEl = $("#destCurrent"), histEl = $("#destHistoric");
+  if(!curEl || !histEl) return;
+  if(!DESTS.length){
+    curEl.innerHTML = `<div class="empty"><h3>No destinations yet</h3><p>Add the places we've played and what they cost per day. Members can then like and comment on each one.</p><div class="row"><button class="btn admin-only" onclick="openDestModal()">Add a destination</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`;
+    histEl.innerHTML = '';
+    return;
+  }
   const cur = currentDest();
   const hist = historicDests();
-  let html = '';
-  html += `<div class="dest-section" style="grid-column:1/-1">
-      <h3 class="dest-section-title">Current</h3>
-      <p class="dest-section-sub">Where we're playing next — schedule, tee times and confirmations.</p>
-    </div>`;
-  html += cur
-    ? `<div class="current-wrap" style="grid-column:1/-1">${currentCard(cur)}</div>`
-    : `<div class="empty" style="grid-column:1/-1"><h3>No current trip set</h3><p>${isAdmin()?'Edit a destination and tick “This is the current/upcoming trip”, then add its courses and tee times here.':'An admin will set the upcoming trip here.'}</p></div>`;
-  html += `<div class="dest-section" style="grid-column:1/-1;margin-top:8px">
-      <h3 class="dest-section-title">Historic</h3>
-      <p class="dest-section-sub">Every place we've played and what it cost per day. Members can like and comment.</p>
-    </div>`;
-  html += hist.length
-    ? hist.map(historicCard).join("")
-    : `<p class="sub" style="grid-column:1/-1;color:var(--paper-on-pine)">No past destinations recorded yet.</p>`;
-  grid.innerHTML = html;
+  curEl.innerHTML =
+    `<div class="dest-section"><h3 class="dest-section-title">Current</h3><p class="dest-section-sub">Where we're playing next — schedule, tee times and confirmations.</p></div>`
+    + (cur
+      ? currentCard(cur)
+      : `<div class="empty"><h3>No current trip set</h3><p>${isAdmin()?'Edit a destination and tick “This is the current/upcoming trip”, then add its courses and tee times here.':'An admin will set the upcoming trip here.'}</p></div>`);
+  histEl.innerHTML =
+    `<div class="dest-section"><h3 class="dest-section-title">Historic</h3><p class="dest-section-sub">Every place we've played and what it cost per day. Members can like and comment.</p></div>`
+    + `<div class="grid g3">${hist.length
+        ? hist.map(historicCard).join("")
+        : `<p class="sub" style="grid-column:1/-1;color:var(--paper-on-pine)">No past destinations recorded yet.</p>`}</div>`;
 }
 
 /* ============================================================
@@ -2524,7 +2530,7 @@ async function savePairing(){
     ({ error } = await sb.from('pairings').insert(base));
   }
   if(error){ toast(friendly(error)); return; }
-  closeModal('pairScrim'); await reload(); go('pairings'); toast("Matchup set");
+  closeModal('pairScrim'); await reload(); go('dests'); toast("Matchup set");
 }
 async function removePairing(id){
   if(!isAdmin()) return;
