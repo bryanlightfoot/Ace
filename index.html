@@ -382,6 +382,21 @@
     text-transform:uppercase;color:var(--brass-deep);font-weight:700}
   .mw-pending .sub{display:block;font-size:11px;color:var(--ink-soft);margin-top:3px;letter-spacing:0;text-transform:none}
   .mw-pending .v{font-family:"Bodoni Moda",serif;font-weight:900;font-size:26px;color:var(--ink);line-height:1}
+  /* ---- required score gate ---- */
+  #gateScrim{align-items:center;justify-content:center}
+  #gateScrim .modal{border-top:4px solid var(--flag)}
+  .gate-card{border:1px solid var(--rule);border-left:4px solid var(--flag);border-radius:10px;
+    padding:14px 15px;margin-bottom:12px;background:var(--paper)}
+  .gate-where{font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--flag);font-weight:700;margin-bottom:2px}
+  .gate-match{font-size:15px;color:var(--ink);font-weight:600;line-height:1.35}
+  .gate-out{font-size:13px;color:var(--ink-soft);margin:4px 0 11px}
+  .gate-row{display:flex;gap:10px;align-items:flex-end}
+  .gate-row .field{flex:0 0 110px}
+  .gate-row .btn{flex:0 0 auto}
+  .gate-reopen{margin-top:9px}
+  .gate-reopen button{background:none;border:0;color:var(--ink-soft);font-size:12px;
+    text-decoration:underline;cursor:pointer;padding:0}
   .wg-terms{font-size:15px;color:var(--ink);line-height:1.4;white-space:pre-wrap}
   .wg-by{font-size:12px;color:var(--ink-soft)}
   .wg-parties{display:flex;flex-wrap:wrap;gap:7px}
@@ -847,6 +862,15 @@
   </div>
 </div>
 
+<!-- ===== REQUIRED SCORE GATE (cannot be dismissed) ===== -->
+<div class="scrim" id="gateScrim">
+  <div class="modal" style="max-width:440px">
+    <h3>Log your score to continue</h3>
+    <p class="sub" id="gate_sub">An admin closed out a matchup you played in. Record your score for it before you can vote, post photos or anything else.</p>
+    <div id="gate_list"></div>
+  </div>
+</div>
+
 <!-- ===== SCORE MODAL ===== -->
 <div class="scrim" id="scoreScrim">
   <div class="modal">
@@ -1179,7 +1203,13 @@ async function loadAll(){
   TRIP_VOTES = (tvotes.data||[]).map(v=>({ id:v.id, by:v.profile_id, option:v.option_label, dest:v.dest_id }));
   MYVOTE = MYID ? (TRIP_VOTES.find(v=>v.by===MYID) || null) : null;
   PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, course:p.course||'', a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B'), closed:!!p.closed, winner:p.winner||null }));
-  SCORES = (sc.data||[]).map(s=>({ id:s.id, by:s.profile_id, score:s.score, label:s.label, course:s.course||'' }));
+  SCORES = (sc.data||[]).map(s=>{
+    // link a score to the closed pairing it answers — via the pairing_id column
+    // if present, otherwise via a hidden "#p:<id>" tag stashed in label.
+    let pairing = s.pairing_id || null;
+    if(!pairing && typeof s.label==='string'){ const m=s.label.match(/^#p:(.+)$/); if(m) pairing=m[1]; }
+    return { id:s.id, by:s.profile_id, score:s.score, label:s.label, course:s.course||'', pairing };
+  });
 
   ACCOLADES = (acc.data||[]).map(a=>({ id:a.id, pid:a.profile_id, title:a.title||'', note:a.note||'', by:a.created_by }));
 
@@ -1596,7 +1626,7 @@ function wagerStandings(){
 }
 
 /* ---- create wager ---- */
-function openWagerModal(){
+function openWagerModal(){ if(gateBlock())return;
   if(!isAuthed()){ openAuth('signin'); return; }
   $("#wg_amount").value = '';
   $("#wg_terms").value = '';
@@ -1616,7 +1646,7 @@ function openWagerModal(){
   }
   openModal('wagerScrim');
 }
-async function saveWager(){
+async function saveWager(){ if(gateBlock())return;
   if(!isAuthed()){ openAuth('signin'); return; }
   const picks = [...document.querySelectorAll('#wg_members input:checked')].map(i=>i.value);
   if(!picks.length){ toast("Pick at least one member to wager against"); return; }
@@ -1636,7 +1666,7 @@ async function saveWager(){
   }catch(e){ toast(friendly(e)); return; }
   closeModal('wagerScrim'); await reload(); go('wagers'); toast("Wager proposed");
 }
-async function acceptWager(id){
+async function acceptWager(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   const mine = wagerParty(w, MYID); if(!mine){ toast("You're not part of this wager"); return; }
   try{
@@ -1648,7 +1678,7 @@ async function acceptWager(id){
   }catch(e){ toast(friendly(e)); return; }
   await reload(); toast("You're in");
 }
-async function cancelWager(id){
+async function cancelWager(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   if(w.by!==MYID){ toast("Only the member who proposed it can cancel"); return; }
   if(!confirm("Cancel this wager? It will be removed for everyone.")) return;
@@ -1663,7 +1693,7 @@ async function adminDeleteWager(id){
   if(error){ toast(friendly(error)); return; }
   await reload(); toast("Wager deleted");
 }
-async function denyWager(id){  const w = WAGERS.find(x=>x.id===id); if(!w) return;
+async function denyWager(id){ if(gateBlock())return;  const w = WAGERS.find(x=>x.id===id); if(!w) return;
   const mine = wagerParty(w, MYID); if(!mine){ toast("You're not part of this wager"); return; }
   if(!confirm("Deny this wager? It will be called off for everyone and moved to history.")) return;
   const { error }=await sb.from('wagers').update({ status:'declined' }).eq('id', id);
@@ -1673,7 +1703,7 @@ async function denyWager(id){  const w = WAGERS.find(x=>x.id===id); if(!w) retur
 
 /* ---- counter (re-propose terms) ---- */
 let counterWager=null;
-function openCounterModal(id){
+function openCounterModal(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   if(!wagerParty(w, MYID)){ toast("You're not part of this wager"); return; }
   counterWager=id;
@@ -1778,7 +1808,7 @@ function renderMyWagers(){
 
 /* ---- settle / outcome ---- */
 let outcomeWager = null;
-function openOutcomeModal(id){
+function openOutcomeModal(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   if(!iAmParty(w)){ toast("Only members in the wager can settle it"); return; }
   outcomeWager = id;
@@ -1799,7 +1829,7 @@ async function submitOutcome(){
   }catch(e){ toast(friendly(e)); return; }
   closeModal('outcomeScrim'); await reload(); toast("Outcome proposed — waiting on the others");
 }
-async function confirmOutcome(id){
+async function confirmOutcome(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   const mine = wagerParty(w, MYID); if(!mine) return;
   try{
@@ -1812,7 +1842,7 @@ async function confirmOutcome(id){
   }catch(e){ toast(friendly(e)); return; }
   await reload(); toast("Confirmed");
 }
-async function disputeOutcome(id){
+async function disputeOutcome(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   if(!iAmParty(w)) return;
   try{
@@ -1921,7 +1951,7 @@ function voteLeader(){
   return arr[0]||null;
 }
 function nameOf(pid){ const m=MEMBERS.find(x=>x.id===pid); return m?m.name:"Member"; }
-async function toggleLike(id){
+async function toggleLike(id){ if(gateBlock())return;
   if(!isAuthed()){ toast("Sign in to like"); openAuth('signin'); return; }
   let res;
   if(DMINE[id]) res = await sb.from('destination_likes').delete().eq('destination_id',id).eq('profile_id',MYID);
@@ -1929,7 +1959,7 @@ async function toggleLike(id){
   if(res.error){ toast(friendly(res.error)); return; }
   await reload();
 }
-async function postComment(id){
+async function postComment(id){ if(gateBlock())return;
   if(!isAuthed()){ toast("Sign in to comment"); openAuth('signin'); return; }
   const inp=$("#dc_"+id); const body=inp?inp.value.trim():"";
   if(!body) return;
@@ -2125,7 +2155,7 @@ function vClick(el){
     lastVoteSel=el.value; voteSelectRow(el);
   }
 }
-async function castVote(){
+async function castVote(){ if(gateBlock())return;
   if(!isAuthed()){ toast("Sign in to vote"); openAuth('signin'); return; }
   const sel = document.querySelector('input[name=vote2027]:checked');
   if(!sel){ toast("Pick an option first"); return; }
@@ -2143,7 +2173,7 @@ async function castVote(){
   if(error){ toast(friendly(error)); return; }
   await reload(); go('vote'); toast(wasUpdate?"Vote updated":"Vote cast");
 }
-async function clearMyVote(){
+async function clearMyVote(){ if(gateBlock())return;
   if(!isAuthed()) return;
   const { error } = await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
   if(error){ toast(friendly(error)); return; }
@@ -2675,8 +2705,8 @@ async function deleteCourse(){
    ============================================================ */
 function openModal(id){ $("#"+id).classList.add("on"); }
 function closeModal(id){ $("#"+id).classList.remove("on"); }
-document.querySelectorAll(".scrim").forEach(s=> s.addEventListener("mousedown", e=>{ if(e.target===s) s.classList.remove("on"); }));
-document.addEventListener("keydown", e=>{ if(e.key==="Escape") document.querySelectorAll(".scrim.on").forEach(s=>s.classList.remove("on")); });
+document.querySelectorAll(".scrim").forEach(s=> s.addEventListener("mousedown", e=>{ if(e.target===s && s.id!=='gateScrim') s.classList.remove("on"); }));
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") document.querySelectorAll(".scrim.on").forEach(s=>{ if(s.id!=='gateScrim') s.classList.remove("on"); }); });
 function go(v){ document.querySelector(`#tabs button[data-v="${v}"]`).click(); }
 
 /* ============================================================
@@ -3095,7 +3125,7 @@ function renderMyScores(){
   if(!mine.length){ el.innerHTML=`<p class="secnote" style="margin-top:10px">No rounds logged yet.</p>`; return; }
   const total=mine.reduce((a,s)=> a+(Number(s.score)||0), 0);
   el.innerHTML = `<div class="f" style="margin:12px 0 6px">Your rounds · total ${total}</div>`
-    + `<div class="myrounds">` + mine.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(s.course||s.label||'Round')}</span><button class="cmt-del" title="Delete" onclick="deleteMyScore('${s.id}')">&times;</button></div>`).join('') + `</div>`;
+    + `<div class="myrounds">` + mine.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(scoreLabel(s))}</span><button class="cmt-del" title="Delete" onclick="deleteMyScore('${s.id}')">&times;</button></div>`).join('') + `</div>`;
 }
 async function addMyScore(){
   const me=ME(); if(!me) return;
@@ -3114,6 +3144,86 @@ async function deleteMyScore(id){
   await reload(); renderMyScores(); toast("Round removed");
 }
 
+/* ============================================================
+   REQUIRED SCORE GATE
+   When an admin closes a pairing, every member who played in it must log
+   a score for that matchup before they can do anything else (vote, post a
+   photo, wager, comment…). A closed pairing is "outstanding" for a member
+   until a score linked to that pairing exists for them.
+   ============================================================ */
+function myTeamIn(p, meId){
+  if((p.a.ids||[]).includes(meId)) return 'a';
+  if((p.b.ids||[]).includes(meId)) return 'b';
+  return null;
+}
+function outstandingPairings(meId){
+  if(!meId) return [];
+  return PAIRINGS.filter(p=>{
+    if(!p.closed) return false;
+    if(!myTeamIn(p, meId)) return false;
+    return !SCORES.some(s=> s.by===meId && s.pairing===p.id);
+  });
+}
+function scoreGateActive(){ return isAuthed() && outstandingPairings(MYID).length>0; }
+/* guard for every member action — returns true (and re-shows the gate) when blocked */
+function gateBlock(){
+  if(scoreGateActive()){ enforceScoreGate(); toast("Log your score for the closed matchup first"); return true; }
+  return false;
+}
+function gateOutcomeText(p, side){
+  if(p.winner==='tie' || !p.winner) return 'Result: halved';
+  return p.winner===side ? 'Result: your team won' : 'Result: your team lost';
+}
+function enforceScoreGate(){
+  const list=$("#gate_list");
+  if(!isAuthed()){ closeModal('gateScrim'); return; }
+  const out=outstandingPairings(MYID);
+  if(!out.length){ closeModal('gateScrim'); return; }
+  if(list){
+    list.innerHTML = out.map(p=>{
+      const side=myTeamIn(p, MYID);
+      const opp = side==='a' ? p.b : p.a;
+      const where = `${esc(p.trip||'Trip')} · Day ${p.day||1}${p.course?` · ${esc(p.course)}`:''}`;
+      const reopen = isAdmin()
+        ? `<div class="gate-reopen"><button onclick="reopenPairing('${p.id}')">Re-open this matchup instead (admin)</button></div>` : '';
+      return `<div class="gate-card">
+        <div class="gate-where">${where}</div>
+        <div class="gate-match">You vs ${esc(opp.name)}</div>
+        <div class="gate-out">${gateOutcomeText(p, side)}</div>
+        <div class="gate-row">
+          <div class="field"><label class="f">Your score</label><input id="gate_sc_${p.id}" type="number" min="1" placeholder="77"></div>
+          <button class="btn" onclick="logPairingScore('${p.id}')">Log score</button>
+        </div>
+        ${reopen}
+      </div>`;
+    }).join('');
+  }
+  openModal('gateScrim');
+}
+async function logPairingScore(pid){
+  const me=ME(); if(!me) return;
+  const p=PAIRINGS.find(x=>x.id===pid); if(!p) return;
+  const inp=document.getElementById('gate_sc_'+pid);
+  const sc=intOrNull(inp ? inp.value : null);
+  if(sc==null||isNaN(sc)){ toast("Enter your score"); return; }
+  const course=p.course||'';
+  // preferred: link via pairing_id column. If that column isn't there yet,
+  // fall back to a hidden "#p:<id>" label tag so the gate still clears.
+  let { error } = await sb.from('scores').insert({ profile_id:me.id, score:sc, course, pairing_id:pid });
+  if(error && /pairing_id|column .* does not exist|schema cache/i.test(error.message||'')){
+    ({ error } = await sb.from('scores').insert({ profile_id:me.id, score:sc, course, label:'#p:'+pid }));
+  }
+  if(error){ toast(friendly(error)); return; }
+  toast("Score logged");
+  await reload();   // renderAll → enforceScoreGate closes the gate once all are cleared
+}
+/* friendly label for a logged round (hides the internal pairing tag) */
+function scoreLabel(s){
+  if(s.course) return s.course;
+  if(typeof s.label==='string' && /^#p:/.test(s.label)) return 'Matchup round';
+  return s.label || 'Round';
+}
+
 /* ---- admin: manage any member's logged rounds (The Record) ---- */
 function openManageScores(){ if(!isAdmin()){ toast("Admins only"); return; } renderManageScores(); openModal('manageScoresScrim'); }
 function renderManageScores(){
@@ -3124,7 +3234,7 @@ function renderManageScores(){
     const total=rounds.reduce((a,s)=>a+(Number(s.score)||0),0);
     return `<div class="ms-block">
       <div class="ms-head">${avatarHTML(m,28)}<span class="ms-name">${esc(m.name)}</span><span class="ms-tot">${rounds.length} round${rounds.length===1?'':'s'} · ${total}</span></div>
-      <div class="myrounds">${rounds.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(s.course||s.label||'Round')}</span><button class="cmt-del" title="Delete" onclick="adminDeleteScore('${s.id}')">&times;</button></div>`).join('')}</div>
+      <div class="myrounds">${rounds.map(s=>`<div class="roundrow"><span class="rs">${s.score}</span><span class="rl">${esc(scoreLabel(s))}</span><button class="cmt-del" title="Delete" onclick="adminDeleteScore('${s.id}')">&times;</button></div>`).join('')}</div>
     </div>`;
   }).join('');
 }
@@ -3140,7 +3250,7 @@ async function adminDeleteScore(id){
    GALLERY
    ============================================================ */
 let pendingGallery = null;
-function readGalleryFile(input){
+function readGalleryFile(input){ if(gateBlock())return;
   const f = input.files && input.files[0]; if(!f) return;
   const r = new FileReader();
   r.onload = function(e){
@@ -3176,7 +3286,7 @@ async function uploadGalleryImage(dataUrl, uid){
     return data.publicUrl;
   }catch(e){ return null; }
 }
-async function confirmGalleryUpload(){
+async function confirmGalleryUpload(){ if(gateBlock())return;
   const me=ME(); if(!me){ openAuth('signin'); return; }
   if(!pendingGallery){ closeModal('galleryScrim'); return; }
   const trip = ($("#gl_trip") ? $("#gl_trip").value : "").trim();
@@ -3249,7 +3359,7 @@ function renderGallery(){
 /* ============================================================
    Render all + boot
    ============================================================ */
-function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); if($("#manageScoresScrim")&&$("#manageScoresScrim").classList.contains('on')) renderManageScores(); }
+function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); if($("#manageScoresScrim")&&$("#manageScoresScrim").classList.contains('on')) renderManageScores(); enforceScoreGate(); }
 
 /* Backfill a profile from signup metadata. Needed because when email
    confirmation is on, signUp returns no session, so the profile write in
@@ -3309,6 +3419,16 @@ function connState(ok){
   catch(e){ connState(false); }
   renderAll();
   BOOTED=true;
+  // best-effort live refresh so a member sees the score gate the moment an
+  // admin closes their matchup. Harmless if realtime isn't enabled.
+  try{
+    let rtTimer=null;
+    sb.channel('ace-rt')
+      .on('postgres_changes', { event:'*', schema:'public', table:'pairings' }, ()=>{
+        clearTimeout(rtTimer); rtTimer=setTimeout(()=>{ reload(); }, 400);
+      })
+      .subscribe();
+  }catch(e){}
 })();
 </script>
 </body>
