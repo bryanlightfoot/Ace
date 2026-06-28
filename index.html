@@ -664,8 +664,7 @@
         <div class="dp-col" id="destCurrent"></div>
         <div class="dp-col">
           <div class="head-row" style="margin-bottom:10px">
-            <div><h3 class="dp-col-title">Pairings</h3>
-              <p class="dp-col-sub">Teams for the current trip — combined handicaps totalled automatically.</p></div>
+            <div><h3 class="dp-col-title">Pairings</h3></div>
             <div id="pairingsActions"></div>
           </div>
           <div id="pairingsBody"></div>
@@ -2130,12 +2129,12 @@ function renderDests(){
   const cur = currentDest();
   const hist = historicDests();
   curEl.innerHTML =
-    `<div class="dest-section"><h3 class="dest-section-title">Current</h3><p class="dest-section-sub">Where we're playing next — schedule, tee times and confirmations.</p></div>`
+    `<div class="dest-section"><h3 class="dest-section-title">Current</h3></div>`
     + (cur
       ? currentCard(cur)
       : `<div class="empty"><h3>No current trip set</h3><p>${isAdmin()?'Edit a destination and tick “This is the current/upcoming trip”, then add its courses and tee times here.':'An admin will set the upcoming trip here.'}</p></div>`);
   histEl.innerHTML =
-    `<div class="dest-section"><h3 class="dest-section-title">Historic</h3><p class="dest-section-sub">Every place we've played and what it cost per day. Members can like and comment.</p></div>`
+    `<div class="dest-section"><h3 class="dest-section-title">Historic</h3></div>`
     + `<div class="grid g3">${hist.length
         ? hist.map(historicCard).join("")
         : `<p class="sub" style="grid-column:1/-1;color:var(--paper-on-pine)">No past destinations recorded yet.</p>`}</div>`;
@@ -3219,7 +3218,6 @@ function renderMembers(){
   const patronsBlock = `
     <div class="members-section">
       <h3 class="dest-section-title">Patrons</h3>
-      <p class="dest-section-sub">Supporters following along.</p>
     </div>
     ${patrons.length
       ? `<div class="mgrid">${patrons.map(m=>memberCardHTML(m, me, wagerById)).join("")}</div>`
