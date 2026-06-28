@@ -440,6 +440,12 @@
   .voteopt .vtally{margin-left:auto;font-family:"Spline Sans Mono",monospace;font-weight:600;color:var(--ink);font-size:15px}
   .voteopt .vrm{border:0;background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
   .voteopt .vrm:hover{color:var(--flag)}
+  .voteopt .vedit{border:0;background:transparent;color:var(--ink-soft);font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
+  .voteopt .vedit:hover{color:var(--brass-deep)}
+  .voteopt .vthumb{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;border:1px solid var(--rule)}
+  .vo-prev{margin-top:6px;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:rgba(46,74,56,.05)}
+  .vo-prev img{display:block;width:100%;max-height:220px;object-fit:cover}
+  .vo-noimg{padding:26px;text-align:center;color:var(--ink-soft);font-size:13px}
   .prevbreak{font-size:12px;color:var(--ink-soft);margin:0 0 4px 46px}
 
   /* ---------- pairings · team battles ---------- */
@@ -567,7 +573,7 @@
         <div><p class="eyebrow" style="color:var(--brass)">Where to in 2027</p>
           <h2 class="disp" style="color:var(--paper-on-pine)">The Vote</h2>
           <p class="sub-on-pine">One vote each. Admins set the options; the group picks.</p></div>
-        <button class="btn admin-only" onclick="addVoteOption()">+ Add option</button>
+        <button class="btn admin-only" onclick="openVoteOptModal()">+ Add a trip</button>
       </div>
       <div id="voteBody"></div>
     </section>
@@ -881,6 +887,29 @@
   </div>
 </div>
 
+<!-- ===== VOTE OPTION (admin) MODAL ===== -->
+<div class="scrim" id="voteOptScrim">
+  <div class="modal">
+    <h3 id="vo_title">Add a trip to vote on</h3>
+    <p class="sub">Name the destination and optionally add a photo. It appears as an option for everyone to vote on — “Any previous trip” always stays at the bottom of the list.</p>
+    <div class="field"><label class="f">Trip name</label><input id="vo_label" placeholder="e.g. Scottsdale, AZ"></div>
+    <label class="f">Photo (optional)</label>
+    <div id="vo_prev" class="vo-prev"></div>
+    <div class="row" style="margin-top:10px">
+      <label class="btn ghost tiny" for="vo_file">Choose photo</label>
+      <input id="vo_file" type="file" accept="image/*" style="display:none" onchange="readVoteFile(this)">
+      <button class="btn ghost tiny" id="vo_removebtn" style="display:none" onclick="clearVotePhoto()">Remove photo</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger tiny" id="vo_delete" style="display:none" onclick="closeModal('voteOptScrim'); removeVoteOption(editingVoteOpt)">Delete</button>
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn ghost" onclick="closeModal('voteOptScrim')">Cancel</button>
+        <button class="btn" onclick="saveVoteOption()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -1002,7 +1031,7 @@ async function loadAll(){
   DCOMMENTS = {};
   (dc.data||[]).forEach(c=>{ (DCOMMENTS[c.destination_id]=DCOMMENTS[c.destination_id]||[]).push({ id:c.id, by:c.profile_id, body:c.body }); });
 
-  VOTE_OPTIONS = (vo.data||[]).map(o=>({ id:o.id, label:o.label }));
+  VOTE_OPTIONS = (vo.data||[]).map(o=>({ id:o.id, label:o.label, image:o.image_url||null }));
   TRIP_VOTES = (tvotes.data||[]).map(v=>({ id:v.id, by:v.profile_id, option:v.option_label, dest:v.dest_id }));
   MYVOTE = MYID ? (TRIP_VOTES.find(v=>v.by===MYID) || null) : null;
   PAIRINGS = (prs.data||[]).map(p=>({ id:p.id, trip:p.trip, day:p.day, course:p.course||'', a:normTeam(p.team_a,'Team A'), b:normTeam(p.team_b,'Team B'), closed:!!p.closed, winner:p.winner||null }));
@@ -1731,13 +1760,15 @@ function renderVote(){
   const me = ME();
   const myOpt = MYVOTE ? MYVOTE.option : null;
   const myDest = MYVOTE ? MYVOTE.dest : null;
-  const optRow = (label, count, removableId) => {
-    const sel = myOpt===label;
-    return `<label class="voteopt ${sel?'sel':''}">
+  const optRow = (o, count) => {
+    const label = o.label, sel = myOpt===label;
+    return `<label class="voteopt ${o.image?'withimg':''} ${sel?'sel':''}">
       <input type="radio" name="vote2027" value="${esc(label)}" ${sel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)">
+      ${o.image?`<img class="vthumb" src="${esc(o.image)}" alt="">`:''}
       <span class="vlabel">${esc(label)}</span>
       <span class="vtally">${count}</span>
-      ${(isAdmin()&&removableId)?`<button class="vrm" title="Remove option" onclick="event.preventDefault();removeVoteOption('${removableId}')">&times;</button>`:''}
+      ${isAdmin()?`<button class="vedit" title="Edit / add photo" onclick="event.preventDefault();openVoteOptModal('${o.id}')">&#9998;</button>`:''}
+      ${isAdmin()?`<button class="vrm" title="Remove" onclick="event.preventDefault();removeVoteOption('${o.id}')">&times;</button>`:''}
     </label>`;
   };
   const anySel = myOpt===ANY_PREV;
@@ -1759,10 +1790,10 @@ function renderVote(){
     </div>
     <p class="sub" style="margin-top:0">One vote each — pick where you'd most like to go in 2027.</p>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
-      ${VOTE_OPTIONS.map(o=>optRow(o.label, c.direct[o.label]||0, o.id)).join('')}
+      ${VOTE_OPTIONS.map(o=>optRow(o, c.direct[o.label]||0)).join('')}
       ${anyRow}
       ${breakdown}
-      ${VOTE_OPTIONS.length===0?'<p class="secnote">No options yet.'+(isAdmin()?' Use “+ Add option” to add some.':'')+'</p>':''}
+      ${VOTE_OPTIONS.length===0?'<p class="secnote">No trips to vote on yet.'+(isAdmin()?' Use “+ Add a trip” to suggest some.':'')+'</p>':''}
     </div>
     ${ me ? `<div class="modal-foot" style="margin-top:18px">
         ${MYVOTE?`<button class="btn ghost" onclick="clearMyVote()">Withdraw my vote</button>`:'<span></span>'}
@@ -1796,22 +1827,79 @@ async function clearMyVote(){
   if(error){ toast(friendly(error)); return; }
   await reload(); go('vote'); toast("Vote withdrawn");
 }
-async function addVoteOption(){
+/* ---- admin: add / edit / photo a trip option ---- */
+let pendingVoteImg = null, voteImgCurrent = null, voteImgCleared = false, editingVoteOpt = null;
+function renderVoteImgPreview(){
+  const prev=$("#vo_prev"); if(!prev) return;
+  const src = pendingVoteImg || (!voteImgCleared ? voteImgCurrent : null);
+  prev.innerHTML = src ? `<img src="${esc(src)}" alt="">` : `<div class="vo-noimg">No photo yet</div>`;
+  const rm=$("#vo_removebtn"); if(rm) rm.style.display = src ? 'inline-block' : 'none';
+}
+function readVoteFile(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      const max=1280; let w=img.width,h=img.height;
+      if(w>h){ if(w>max){ h=Math.round(h*max/w); w=max; } } else { if(h>max){ w=Math.round(w*max/h); h=max; } }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      pendingVoteImg=c.toDataURL('image/jpeg',0.85); voteImgCleared=false;
+      renderVoteImgPreview();
+    };
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(f); input.value="";
+}
+function clearVotePhoto(){ pendingVoteImg=null; voteImgCleared=true; renderVoteImgPreview(); }
+function openVoteOptModal(id){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  editingVoteOpt = id || null;
+  const o = id ? VOTE_OPTIONS.find(x=>x.id===id) : null;
+  pendingVoteImg=null; voteImgCleared=false; voteImgCurrent = o ? (o.image||null) : null;
+  $("#vo_title").textContent = o ? "Edit trip option" : "Add a trip to vote on";
+  $("#vo_label").value = o ? o.label : "";
+  $("#vo_delete").style.display = o ? "inline-block" : "none";
+  renderVoteImgPreview();
+  openModal('voteOptScrim');
+}
+async function saveVoteOption(){
   if(!isAdmin()) return;
-  const label = (prompt("New trip option (e.g., Scottsdale):")||"").trim();
-  if(!label) return;
-  const { error } = await sb.from('vote_options').insert({ label });
-  if(error){ toast(friendly(error)); return; }
-  await reload(); go('vote'); toast("Option added");
+  const label=$("#vo_label").value.trim();
+  if(!label){ toast("Give the trip a name"); return; }
+  let image_url = voteImgCleared ? null : voteImgCurrent;
+  if(pendingVoteImg){
+    toast("Uploading photo…");
+    const url = await uploadGalleryImage(pendingVoteImg, MYID);
+    if(!url){ toast("Couldn't upload the photo"); return; }
+    image_url = url;
+  }
+  if(voteImgCurrent && image_url!==voteImgCurrent){
+    const path=galleryPathFromUrl(voteImgCurrent); if(path){ try{ await sb.storage.from('gallery').remove([path]); }catch(e){} }
+  }
+  try{
+    if(editingVoteOpt){
+      const prev = VOTE_OPTIONS.find(x=>x.id===editingVoteOpt);
+      const { error }=await sb.from('vote_options').update({ label, image_url }).eq('id', editingVoteOpt); if(error) throw error;
+      if(prev && prev.label!==label){ await sb.from('trip_votes').update({ option_label:label }).eq('poll','2027').eq('option_label', prev.label); }
+    } else {
+      const { error }=await sb.from('vote_options').insert({ label, image_url }); if(error) throw error;
+    }
+  }catch(e){ toast(friendly(e)); return; }
+  pendingVoteImg=null; closeModal('voteOptScrim'); await reload(); go('vote'); toast(editingVoteOpt?"Trip updated":"Trip added");
 }
 async function removeVoteOption(id){
   if(!isAdmin()) return;
-  if(!confirm("Remove this option? Any votes already cast for it will be cleared.")) return;
+  if(!confirm("Remove this trip option? Any votes already cast for it will be cleared.")) return;
   const opt = VOTE_OPTIONS.find(o=>o.id===id);
   const { error } = await sb.from('vote_options').delete().eq('id', id);
   if(error){ toast(friendly(error)); return; }
-  if(opt) await sb.from('trip_votes').delete().eq('poll','2027').eq('option_label', opt.label);
-  await reload(); go('vote'); toast("Option removed");
+  if(opt){
+    await sb.from('trip_votes').delete().eq('poll','2027').eq('option_label', opt.label);
+    if(opt.image){ const path=galleryPathFromUrl(opt.image); if(path){ try{ await sb.storage.from('gallery').remove([path]); }catch(e){} } }
+  }
+  await reload(); go('vote'); toast("Trip removed");
 }
 
 /* ============================================================
