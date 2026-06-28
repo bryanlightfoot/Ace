@@ -3198,6 +3198,16 @@ async function doJoin(){
     const pin=($("#jn_pin")?$("#jn_pin").value:"").trim(); if(pin!==JOIN_PIN){ toast("Incorrect group PIN — ask an admin"); return; }
   }
   const photo=pendingPic;
+  // Hard block on an email that's already registered (member OR patron) — give a
+  // clear message up front instead of the vague "check your email" that the auth
+  // server returns for duplicates. Falls through gracefully if the RPC is absent.
+  try{
+    const { data:exists, error:exErr } = await sb.rpc('email_exists', { check_email: email });
+    if(!exErr && exists===true){
+      toast("That email already has an account — sign in instead, or reset your password");
+      return;
+    }
+  }catch(_){}
   const meta={ name, first_name:first, last_name:last, suffix:suffix||null };
   if(patron){ meta.signup_role='patron'; }
   else { meta.handicap=hcap; meta.birthday=dob; meta.age=age; }
