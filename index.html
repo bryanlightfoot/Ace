@@ -1450,7 +1450,7 @@ function renderWagerLeaderboard(){
   }
   const medal = i => ["🥇","🥈","🥉"][i] || `${i+1}`;
   const me = ME();
-  const net = n => `<span style="color:${n>0?'var(--brass)':n<0?'var(--flag)':'var(--ink-soft)'};font-weight:700">${netMoney(n)}</span>`;
+  const net = n => `<span style="color:${n>0?'var(--fairway)':n<0?'var(--flag)':'var(--ink-soft)'};font-weight:700">${netMoney(n)}</span>`;
   el.insertAdjacentHTML('beforeend', `<div class="card" style="margin-bottom:16px"><div class="pad">
     <p class="eyebrow" style="color:var(--brass-deep)">Wager standings · most won leads, most lost trails</p>
     <table class="hof" style="margin-top:10px"><thead><tr><th></th><th>Player</th><th class="r">Wagers</th><th class="r">Net</th></tr></thead>
@@ -3124,7 +3124,7 @@ function renderMembers(){
     const low = lows.length ? Math.min(...lows) : null;
     const wnet = wagerById[m.id] ? wagerById[m.id].net : 0;
     const hasWagers = !!wagerById[m.id];
-    const wColor = wnet>0?'var(--brass)':wnet<0?'var(--flag)':'var(--ink-soft)';
+    const wColor = wnet>0?'var(--fairway)':wnet<0?'var(--flag)':'var(--ink-soft)';
     const quick = `<div class="mquick">
         <div class="mq"><span class="mq-l">Lowest</span><span class="mq-v">${low!=null?low:'\u2014'}</span></div>
         <div class="mq"><span class="mq-l">Wagers</span><span class="mq-v" style="color:${wColor}">${hasWagers?netMoney(wnet):'\u2014'}</span></div>
