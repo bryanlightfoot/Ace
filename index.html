@@ -1759,12 +1759,13 @@ function renderVote(){
   const c = voteCounts();
   const me = ME();
   const myOpt = MYVOTE ? MYVOTE.option : null;
+  lastVoteSel = myOpt;
   const myDest = MYVOTE ? MYVOTE.dest : null;
   const optRow = (o, count) => {
     const label = o.label, sel = myOpt===label;
     return `<label class="voteopt ${o.image?'withimg':''} ${sel?'sel':''}">
-      <input type="radio" name="vote2027" value="${esc(label)}" ${sel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)">
-      ${o.image?`<img class="vthumb" src="${esc(o.image)}" alt="">`:''}
+      <input type="radio" name="vote2027" value="${esc(label)}" ${sel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
+      ${o.image?`<img class="vthumb" src="${esc(o.image)}" alt="" title="View photo" onclick="event.preventDefault();event.stopPropagation();openLightbox('${esc(o.image)}')">`:''}
       <span class="vlabel">${esc(label)}</span>
       <span class="vtally">${count}</span>
       ${isAdmin()?`<button class="vedit" title="Edit / add photo" onclick="event.preventDefault();openVoteOptModal('${o.id}')">&#9998;</button>`:''}
@@ -1774,7 +1775,7 @@ function renderVote(){
   const anySel = myOpt===ANY_PREV;
   const destOpts = DESTS.map(d=>`<option value="${d.id}" ${anySel&&myDest===d.id?'selected':''}>${esc(d.name)}</option>`).join('');
   const anyRow = `<label class="voteopt ${anySel?'sel':''}">
-    <input type="radio" id="vote_any" name="vote2027" value="${esc(ANY_PREV)}" ${anySel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)">
+    <input type="radio" id="vote_any" name="vote2027" value="${esc(ANY_PREV)}" ${anySel?'checked':''} ${me?'':'disabled'} onchange="vSel(this)" onclick="vClick(this)">
     <span class="vlabel">Any previous trip</span>
     ${DESTS.length?`<select id="vote_prevdest" onclick="event.stopPropagation()" onchange="var r=document.getElementById('vote_any'); if(r&&!r.disabled){ r.checked=true; vSel(r); }">${destOpts}</select>`:`<span style="font-size:12px;color:var(--ink-soft)">No previous trips yet</span>`}
     <span class="vtally">${c.anyTotal}</span>
@@ -1803,9 +1804,22 @@ function renderVote(){
     ${ leader&&leader.count>0 ? `<div style="margin-top:14px;font-size:13px;color:var(--ink-soft)">Leading: <strong style="color:var(--ink)">${esc(leader.label)}</strong> with ${leader.count} vote${leader.count===1?'':'s'}.</div>`:'' }
   </div></div>`;
 }
+let lastVoteSel = null;
 function vSel(el){
   document.querySelectorAll('#voteBody .voteopt').forEach(x=>x.classList.remove('sel'));
   const p = el.closest('.voteopt'); if(p) p.classList.add('sel');
+  lastVoteSel = el.value;
+}
+function vClick(el){
+  // click an already-selected option to deselect it
+  if(el.disabled) return;
+  if(lastVoteSel===el.value && el.checked){
+    el.checked = false;
+    lastVoteSel = null;
+    document.querySelectorAll('#voteBody .voteopt').forEach(x=>x.classList.remove('sel'));
+  } else {
+    lastVoteSel = el.value;
+  }
 }
 async function castVote(){
   if(!isAuthed()){ toast("Sign in to vote"); openAuth('signin'); return; }
