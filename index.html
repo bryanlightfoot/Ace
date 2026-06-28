@@ -2740,6 +2740,13 @@ async function doJoin(){
   const photo=pendingPic;
   const { data, error }=await sb.auth.signUp({ email, password:pw, options:{ emailRedirectTo: window.location.origin, data:{ name, handicap:hcap, birthday:dob, age } } });
   if(error){ toast(friendly(error)); return; }
+  // Supabase returns a user with an empty `identities` array when the email is
+  // already registered (its enumeration-protection behaviour). Treat that as a
+  // hard block so people can't "create" an account on an email already in use.
+  if(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+    toast("That email is already registered — sign in instead, or reset your password");
+    return;
+  }
   if(!data.session){
     closeModal('authScrim');
     toast("Account made — check your email to confirm, then sign in");
