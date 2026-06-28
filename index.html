@@ -338,7 +338,7 @@
   .abadge.patron{color:var(--patron);border-color:var(--patron)}
   /* golden "M" shown next to a member's name on comments (patrons get none) */
   .memblem{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
-    margin-left:5px;border-radius:4px;background:var(--brass);color:#2a200a;
+    margin-right:5px;border-radius:4px;background:var(--brass);color:#2a200a;
     font-family:"Hanken Grotesk",sans-serif;font-weight:800;font-size:10px;line-height:1;vertical-align:middle}
   /* sign-up account-type chooser */
   .authpick{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
@@ -1578,7 +1578,7 @@ function accoladeSocial(a){
       <button class="likebtn down${my===-1?' on':''}" onclick="reactAccolade('${a.id}',-1)" title="${my===-1?'Remove dislike':'Dislike'}">&#128078; <span>${dislikes}</span></button>
     </div>
     <div class="comments">
-      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}${memberEmblem(c.by)}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteAccoladeComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${memberEmblem(c.by)}${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteAccoladeComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
       ${isAuthed()
         ? `<div class="cmt-add"><input id="ac_${a.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postAccoladeComment('${a.id}')"><button class="btn ghost tiny" onclick="postAccoladeComment('${a.id}')">Post</button></div>`
         : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to react or comment.</div>`}
@@ -1995,7 +1995,7 @@ function wagerSocial(w){
       <button class="likebtn down${my===-1?' on':''}" onclick="reactWager('${w.id}',-1)" title="${my===-1?'Remove dislike':'Dislike'}">&#128078; <span>${dislikes}</span></button>
     </div>
     <div class="comments">
-      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}${memberEmblem(c.by)}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteWagerComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${memberEmblem(c.by)}${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteWagerComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
       ${isAuthed()
         ? `<div class="cmt-add"><input id="wc_${w.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postWagerComment('${w.id}')"><button class="btn ghost tiny" onclick="postWagerComment('${w.id}')">Post</button></div>`
         : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to react or comment.</div>`}
@@ -2147,7 +2147,7 @@ function destSocial(d){
       <button class="btn ghost tiny admin-only" onclick="openDestModal('${d.id}')">Edit</button>
     </div>
     <div class="comments">
-      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${esc(nameOf(c.by))}${memberEmblem(c.by)}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${memberEmblem(c.by)}${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
       ${isAuthed()
         ? `<div class="cmt-add"><input id="dc_${d.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postComment('${d.id}')"><button class="btn ghost tiny" onclick="postComment('${d.id}')">Post</button></div>`
         : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="openAuth('signin')">Sign in</button> to react or comment.</div>`}
