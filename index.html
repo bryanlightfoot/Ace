@@ -728,6 +728,54 @@
   .slot-x:hover{color:var(--flag)}
   .teamsum{font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--ink-soft)}
   @media(max-width:560px){ .teamcols{grid-template-columns:1fr} }
+
+  /* ---------- Pairings Builder (admin, drag & drop) ---------- */
+  #pairbuilder .pb-controls{margin-bottom:16px}
+  .pb-row{display:grid;grid-template-columns:1.5fr .7fr 1.3fr;gap:14px}
+  @media(max-width:640px){.pb-row{grid-template-columns:1fr}}
+  .pb-row .field{margin-bottom:0}
+  .pb-hint{color:var(--ink-soft);font-size:12.5px;line-height:1.5;margin:12px 0 0}
+  .pb-pool{margin-bottom:18px}
+  .pb-pool-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .pb-pool-head .lbl{font-family:"Bodoni Moda",serif;font-size:19px;font-weight:700;color:var(--ink)}
+  .pb-count{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass-deep);font-weight:700}
+  .pb-pool-zone{display:flex;flex-wrap:wrap;gap:8px;min-height:56px;padding:12px;border:1px dashed var(--rule);
+    border-radius:10px;background:rgba(46,74,56,.04);transition:border-color .15s,background .15s}
+  .pb-zone-empty{color:var(--ink-soft);font-size:13px;margin:auto;text-align:center}
+  .pb-armed .pb-pool-zone,.pb-armed .pb-team{border-color:var(--brass);background:rgba(196,154,74,.10)}
+  .pb-chip{display:inline-flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--rule);
+    border-radius:999px;padding:3px 9px 3px 3px;cursor:grab;user-select:none;font-weight:600;font-size:13.5px;
+    color:var(--ink);box-shadow:0 1px 0 rgba(0,0,0,.05)}
+  .pb-chip:hover{border-color:var(--brass)}
+  .pb-chip:active{cursor:grabbing}
+  .pb-chip.pb-held{outline:2px solid var(--brass);outline-offset:1px;box-shadow:var(--shadow)}
+  .pb-chip img,.pb-chip .pb-nm,.pb-chip .pb-hcp{pointer-events:none}
+  .pb-chip .pb-hcp{font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-soft);font-weight:500}
+  .pb-chip .pb-x{border:0;background:none;color:var(--ink-soft);font-size:16px;line-height:1;cursor:pointer;padding:0 1px;width:auto}
+  .pb-chip .pb-x:hover{color:var(--flag)}
+  .pb-sections{display:grid;gap:16px}
+  .pb-sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .pb-sec-title{font-family:"Bodoni Moda",serif;font-size:19px;font-weight:700;color:var(--ink)}
+  .pb-sec-sub{font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--brass-deep);font-weight:600}
+  .pb-teams{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch}
+  @media(max-width:640px){.pb-teams{grid-template-columns:1fr}}
+  .pb-team{display:flex;flex-direction:column;gap:10px;border:1px dashed var(--rule);border-radius:10px;
+    padding:12px;background:rgba(46,74,56,.03);min-height:118px;transition:border-color .15s,background .15s}
+  .pb-teamname{border:0;border-bottom:1px solid var(--rule);background:transparent;font-family:"Bodoni Moda",serif;
+    font-weight:700;font-size:15px;color:var(--ink);padding:2px 0;border-radius:0}
+  .pb-teamname:focus{outline:none;border-bottom-color:var(--brass);box-shadow:none}
+  .pb-team-chips{display:flex;flex-wrap:wrap;gap:8px;flex:1;align-content:flex-start}
+  .pb-team-net{border-top:1px solid var(--rule);padding-top:8px;font-size:12px;color:var(--ink-soft);
+    display:flex;justify-content:space-between;align-items:center}
+  .pb-team-net b{font-family:"Spline Sans Mono",monospace;font-size:15px;color:var(--ink)}
+  .pb-vs{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:76px;text-align:center}
+  .pb-vs-label{font-family:"Bodoni Moda",serif;font-style:italic;color:var(--ink-soft);font-size:15px}
+  .pb-diff{font-family:"Spline Sans Mono",monospace;font-size:12px;color:var(--brass-deep);font-weight:700}
+  .pb-diff .g{font-size:18px;color:var(--ink);display:block;line-height:1.2}
+  .pb-diff .pb-fav{display:block;font-family:"Hanken Grotesk",sans-serif;font-size:10px;font-weight:600;
+    color:var(--ink-soft);margin-top:2px}
+  @media(max-width:640px){.pb-vs{flex-direction:row;min-width:0;gap:10px;justify-content:center}
+    .pb-diff .g{display:inline;font-size:15px}}
 </style>
 
 <div class="wrap">
@@ -746,6 +794,7 @@
     <button data-v="gallery">Gallery</button>
     <button data-v="members">Members / Patrons</button>
     <button data-v="wagers">Wagers</button>
+    <button data-v="pairbuilder" style="display:none" aria-hidden="true" tabindex="-1">Pairings Builder</button>
   </nav>
 
   <main>
@@ -821,6 +870,9 @@
       </div>
       <div id="wagerBody"></div>
     </section>
+
+    <!-- ============ PAIRINGS BUILDER (admin-only, hidden) ============ -->
+    <section class="view" id="pairbuilder"></section>
   </main>
 
   <p class="note-on-pine">
@@ -3426,6 +3478,7 @@ function renderAcct(){
       <button onclick="openMyWagers()">My Wagers${att>0?` <span class="wg-bell sm">${att}</span>`:``}</button>
       <button onclick="openProfile()">My profile</button>
       ${m.role==='admin'?`<button onclick="go('members')">Manage members</button>`:``}
+      ${m.role==='admin'?`<button onclick="openPairBuilder()">Pairings Builder</button>`:``}
       <button onclick="signOut()">Sign out</button>
     </div>`;
 }
@@ -4185,9 +4238,151 @@ function renderGallery(){
 }
 
 /* ============================================================
+   PAIRINGS BUILDER  (admin-only, groundwork)
+   A hidden drag-and-drop board: a pool of every member up top, then three
+   tee-time sections, each with two teams. Net handicap + the gap between the
+   two teams update live. Export pushes each filled tee time to the Pairings
+   list (Destinations / Pairings tab) as its own matchup.
+   State lives in memory (PB) — nothing is written until Export.
+   ============================================================ */
+function pbSecNew(){ return { a:{name:'Team A', ids:[]}, b:{name:'Team B', ids:[]} }; }
+let PB = { trip:'', day:1, course:'', sections:[pbSecNew(), pbSecNew(), pbSecNew()] };
+let pbHeld = null;   // a "picked up" player id — powers tap-to-place on touch
+
+function pbInitDefaults(){ if(!PB.trip) PB.trip = GALLERY_TRIPS[GALLERY_TRIPS.length-1] || ''; }
+function pbPlaced(){ const s=new Set(); PB.sections.forEach(sec=>{ sec.a.ids.forEach(id=>s.add(id)); sec.b.ids.forEach(id=>s.add(id)); }); return s; }
+function pbPool(){ const placed=pbPlaced(); return MEMBERS.filter(m=>!placed.has(m.id)).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))); }
+function pbMove(pid, zone){
+  if(!pid) return;
+  // a player only plays one tee time, so lift them out of every team first
+  PB.sections.forEach(sec=>{ sec.a.ids=sec.a.ids.filter(id=>id!==pid); sec.b.ids=sec.b.ids.filter(id=>id!==pid); });
+  if(zone && zone!=='pool'){
+    const i=parseInt(zone[1],10); const team = zone[2]==='a' ? 'a' : 'b';
+    if(PB.sections[i]){ const arr=PB.sections[i][team].ids; if(!arr.includes(pid)) arr.push(pid); }
+  }
+  pbHeld=null; pbRender();
+}
+/* native HTML5 drag (desktop) */
+function pbDragStart(ev, pid){ try{ ev.dataTransfer.setData('text/plain', pid); ev.dataTransfer.effectAllowed='move'; }catch(e){} }
+function pbAllowDrop(ev){ ev.preventDefault(); try{ ev.dataTransfer.dropEffect='move'; }catch(e){} }
+function pbDrop(ev, zone){ ev.preventDefault(); let pid=''; try{ pid=ev.dataTransfer.getData('text/plain'); }catch(e){} if(pid) pbMove(pid, zone); }
+/* tap-to-place fallback — native drag doesn't fire on touch screens */
+function pbTapChip(ev, pid){ if(ev) ev.stopPropagation(); pbHeld = (pbHeld===pid) ? null : pid; pbRender(); }
+function pbTapZone(zone){ if(pbHeld) pbMove(pbHeld, zone); }
+function pbChipX(ev, pid){ if(ev) ev.stopPropagation(); pbMove(pid, 'pool'); }
+/* setters that must NOT re-render (so text inputs keep focus while typing) */
+function pbSet(k, v){ if(k==='day') PB.day = Math.max(1, parseInt(v,10)||1); else PB[k]=v; }
+function pbSetName(i, team, v){ if(PB.sections[i]) PB.sections[i][team].name = v; }
+function pbSetCourse(v){ PB.course=v; pbRender(); }   // re-render to refresh tee-time labels
+function pbReset(){ PB.sections=[pbSecNew(), pbSecNew(), pbSecNew()]; pbHeld=null; pbRender(); }
+function pbTeeLabel(i){
+  const cur = currentDest ? currentDest() : null; if(!cur || !PB.course) return '';
+  const c = COURSES.find(x=>x.destId===cur.id && x.name===PB.course);
+  const t = (c && Array.isArray(c.teeTimes)) ? c.teeTimes.filter(Boolean)[i] : null;
+  return t ? ('\u00b7 '+t) : '';
+}
+function pbChip(m, inTeam){
+  const held = pbHeld===m.id ? ' pb-held' : '';
+  return `<span class="pb-chip${held}" draggable="true" ondragstart="pbDragStart(event,'${m.id}')" onclick="pbTapChip(event,'${m.id}')" title="${esc(m.name)} \u00b7 hcp ${hdisp(m)}">`
+    + avatarHTML(m,22)
+    + `<span class="pb-nm">${esc(m.name)}</span><span class="pb-hcp">${hdisp(m)}</span>`
+    + (inTeam ? `<button class="pb-x" title="Back to pool" onclick="pbChipX(event,'${m.id}')">&times;</button>` : '')
+    + `</span>`;
+}
+function pbRender(){
+  const el=$("#pairbuilder"); if(!el) return;
+  if(!isAdmin()){ el.innerHTML=''; if(el.classList.contains('on')) go('clubhouse'); return; }
+  el.classList.toggle('pb-armed', !!pbHeld);
+
+  const tripOpts = [...new Set([...GALLERY_TRIPS, ...TRIPS.map(t=>`${t.loc||''}${t.year?(' '+t.year):''}`.trim())])].filter(Boolean);
+  const cur = currentDest ? currentDest() : null;
+  const courseNames = cur ? [...new Set(coursesFor(cur.id).map(c=>c.name).filter(Boolean))] : [];
+  const courseSel = `<select onchange="pbSetCourse(this.value)"><option value="">\u2014 optional course \u2014</option>`
+    + courseNames.map(n=>`<option value="${esc(n)}" ${PB.course===n?'selected':''}>${esc(n)}</option>`).join('') + `</select>`;
+
+  const pool = pbPool();
+  const poolChips = pool.length ? pool.map(m=>pbChip(m,false)).join('')
+    : `<span class="pb-zone-empty">Everyone's been paired. Drag a player back here to free them up.</span>`;
+
+  const sections = PB.sections.map((sec,i)=>{
+    const aT=teamTotal(sec.a.ids), bT=teamTotal(sec.b.ids);
+    const both = sec.a.ids.length && sec.b.ids.length;
+    const gap = Math.round(Math.abs(aT-bT)*10)/10;
+    const gapFmt = (gap%1===0) ? String(gap) : gap.toFixed(1);
+    const favTxt = !both ? '' : (aT<bT ? esc(sec.a.name)+' favoured' : bT<aT ? esc(sec.b.name)+' favoured' : 'Dead level');
+    const col=(team)=>{
+      const t=sec[team], tt=teamTotal(t.ids), zone='s'+i+team;
+      const chips = t.ids.length ? t.ids.map(id=>{ const m=MEMBERS.find(x=>x.id===id); return m?pbChip(m,true):''; }).join('')
+        : `<span class="pb-zone-empty">Drop players here</span>`;
+      return `<div class="pb-team" ondragover="pbAllowDrop(event)" ondrop="pbDrop(event,'${zone}')" onclick="pbTapZone('${zone}')">`
+        + `<input class="pb-teamname" value="${esc(t.name)}" oninput="pbSetName(${i},'${team}',this.value)" aria-label="Team name">`
+        + `<div class="pb-team-chips">${chips}</div>`
+        + `<div class="pb-team-net"><span>${t.ids.length} player${t.ids.length===1?'':'s'}</span><b>${hcapFmt(tt)}</b></div>`
+        + `</div>`;
+    };
+    return `<div class="card pb-section"><div class="pad">`
+      + `<div class="pb-sec-head"><span class="pb-sec-title">Tee time ${i+1}</span><span class="pb-sec-sub">${esc(pbTeeLabel(i))}</span></div>`
+      + `<div class="pb-teams">${col('a')}`
+      + `<div class="pb-vs"><div class="pb-vs-label">vs</div><div class="pb-diff">\u0394 <span class="g">${both?gapFmt:'\u2014'}</span><span class="pb-fav">${favTxt}</span></div></div>`
+      + `${col('b')}</div></div></div>`;
+  }).join('');
+
+  el.innerHTML =
+    `<div class="head-row"><div><p class="eyebrow" style="color:var(--brass)">Admin \u00b7 groundwork</p>`
+    + `<h2 class="disp" style="color:var(--paper-on-pine)">Pairings Builder</h2></div>`
+    + `<div style="display:flex;gap:10px"><button class="btn ghost" onclick="pbReset()">Clear board</button>`
+    + `<button class="btn" onclick="pbExport()">Export to Pairings \u2934</button></div></div>`
+    + `<div class="card pb-controls"><div class="pad"><div class="pb-row">`
+    + `<div class="field"><label class="f">Trip</label><input list="pb_trips" value="${esc(PB.trip)}" oninput="pbSet('trip',this.value)" placeholder="Bend - 2026"><datalist id="pb_trips">${tripOpts.map(t=>`<option value="${esc(t)}"></option>`).join('')}</datalist></div>`
+    + `<div class="field"><label class="f">Day</label><input type="number" min="1" value="${PB.day||1}" oninput="pbSet('day',this.value)"></div>`
+    + `<div class="field"><label class="f">Course</label>${courseSel}</div>`
+    + `</div><p class="pb-hint">Drag players from the pool into each tee time's two teams \u2014 or tap a player, then tap a team. Net handicap and the gap between teams update live. <b>Export</b> pushes every tee time that has both teams filled to the Pairings list as its own matchup.</p></div></div>`
+    + `<div class="card pb-pool"><div class="pad"><div class="pb-pool-head"><span class="lbl">Player pool</span><span class="pb-count">${pool.length} unplaced</span></div>`
+    + `<div class="pb-pool-zone" ondragover="pbAllowDrop(event)" ondrop="pbDrop(event,'pool')" onclick="pbTapZone('pool')">${poolChips}</div></div></div>`
+    + `<div class="pb-sections">${sections}</div>`;
+}
+function openPairBuilder(){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  const menu=$("#acctmenu"); if(menu) menu.classList.remove('on');
+  pbInitDefaults(); pbRender(); go('pairbuilder');
+}
+async function pbExport(){
+  if(!isAdmin()){ toast("Admins only"); return; }
+  const trip=(PB.trip||'').trim();
+  if(!trip){ toast("Name the trip first"); return; }
+  const day=Math.max(1, parseInt(PB.day,10)||1);
+  const course=(PB.course||'').trim()||null;
+  const ready = PB.sections.map((sec,i)=>({sec,i})).filter(({sec})=> sec.a.ids.length && sec.b.ids.length);
+  if(!ready.length){ toast("Fill both teams in at least one tee time"); return; }
+
+  // warn if any of these players already sit in a matchup for this trip + day
+  const existing=new Set();
+  PAIRINGS.forEach(p=>{ if((p.trip||'')===trip && (p.day||1)===day){ p.a.ids.forEach(id=>existing.add(id)); p.b.ids.forEach(id=>existing.add(id)); } });
+  const clash = ready.some(({sec})=> [...sec.a.ids, ...sec.b.ids].some(id=>existing.has(id)));
+  if(clash && !confirm(`Some of these players already have a matchup for ${trip}, day ${day}. Export anyway? You may create duplicates you'll need to tidy up.`)) return;
+
+  let ok=0, firstErr=null;
+  for(const {sec,i} of ready){
+    const grp=i+1;
+    const base={ trip, day, course,
+      team_a:{ name:(sec.a.name||'Team A').trim()||'Team A', ids:sec.a.ids.slice(), grp },
+      team_b:{ name:(sec.b.name||'Team B').trim()||'Team B', ids:sec.b.ids.slice() } };
+    let { error } = await sb.from('pairings').insert({ ...base, grp });
+    if(error && /grp|column .* does not exist|schema cache/i.test(error.message||'')){
+      ({ error } = await sb.from('pairings').insert(base));
+    }
+    if(error){ if(!firstErr) firstErr=error; } else ok++;
+  }
+  await reload();
+  if(firstErr && !ok){ toast(friendly(firstErr)); return; }
+  go('dests');
+  toast(ok===1 ? "Exported 1 matchup to Pairings" : `Exported ${ok} matchups to Pairings`+(firstErr?" (some failed)":""));
+}
+
+/* ============================================================
    Render all + boot
    ============================================================ */
-function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); if($("#manageScoresScrim")&&$("#manageScoresScrim").classList.contains('on')) renderManageScores(); enforceScoreGate(); }
+function renderAll(){ applyRole(); renderAcct(); renderClubhouse(); renderRecord(); renderFame(); renderDests(); renderPairings(); renderVote(); renderGallery(); renderMembers(); renderWagers(); if($("#myWagersScrim")&&$("#myWagersScrim").classList.contains('on')) renderMyWagers(); if($("#manageScoresScrim")&&$("#manageScoresScrim").classList.contains('on')) renderManageScores(); if($("#pairbuilder")&&$("#pairbuilder").classList.contains('on')) pbRender(); enforceScoreGate(); }
 
 /* Backfill a profile from signup metadata. Needed because when email
    confirmation is on, signUp returns no session, so the profile write in
