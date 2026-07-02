@@ -568,6 +568,26 @@
     letter-spacing:.06em;text-transform:uppercase;color:var(--fairway);background:rgba(76,138,90,.12);padding:2px 7px;border-radius:999px;vertical-align:middle}
   .vo-prev{margin-top:6px;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:rgba(46,74,56,.05)}
   .vo-prev img{display:block;width:100%;max-height:220px;object-fit:cover}
+  /* Weaver's Suggestion Box */
+  .sugbox-row{width:100%;text-align:left;border-style:dashed;border-color:var(--brass);
+    background:rgba(196,154,74,.08);cursor:pointer}
+  .sugbox-row:hover{background:rgba(196,154,74,.16)}
+  .sugbox-row .vtally{color:var(--brass-deep);font-size:20px;line-height:1}
+  .suglist{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .sugrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--rule);
+    border-radius:10px;background:var(--paper)}
+  .sugrow.mine{border-color:var(--fairway)}
+  .sugrank{font-family:"Bodoni Moda",serif;font-size:18px;font-weight:700;color:var(--brass-deep);min-width:22px;text-align:center}
+  .sugloc{flex:1;min-width:0}
+  .sugloc .n{font-weight:600;color:var(--ink)}
+  .sugloc .m{font-size:11px;color:var(--ink-soft);font-family:"Spline Sans Mono",monospace;margin-top:2px}
+  .sugvote{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);border-radius:999px;
+    padding:6px 12px;background:var(--paper);color:var(--ink);cursor:pointer;font-weight:700;white-space:nowrap}
+  .sugvote:hover{border-color:var(--brass)}
+  .sugvote.on{background:rgba(76,138,90,.12);border-color:var(--fairway);color:var(--fairway)}
+  .sugvote .cnt{font-family:"Spline Sans Mono",monospace}
+  .sugrm{border:0;background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+  .sugrm:hover{color:var(--flag)}
   .vo-noimg{padding:26px;text-align:center;color:var(--ink-soft);font-size:13px}
   .prevbreak{font-size:12px;color:var(--ink-soft);margin:0 0 4px 46px}
 
@@ -1097,6 +1117,13 @@
   </div>
 </div>
 
+<div class="scrim" id="suggestScrim">
+  <div class="modal">
+    <h3>📮 Weaver's Suggestion Box!</h3>
+    <div id="suggestBody"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -1134,6 +1161,7 @@ const GALLERY_TRIPS = ["Myrtle Beach - 2024", "St. George - 2025", "Bend - 2026"
 let TRIPS = [], DESTS = [], VOTES = {}, MINE = {}, MEMBERS = [], GALLERY = [], DLIKES = {}, DDISLIKES = {}, DMYREACT = {}, DCOMMENTS = {};
 let VOTE_OPTIONS = [], TRIP_VOTES = [], MYVOTE = null, PAIRINGS = [], SCORES = [];
 let ACCOLADES = [], WAGERS = [];
+let SUGGESTIONS = []; let suggestMode = 'menu';
 let ALIKES = {}, ADISLIKES = {}, AMYREACT = {}, ACOMMENTS = {};
 let WLIKES = {}, WDISLIKES = {}, WMYREACT = {}, WCOMMENTS = {};
 let COURSES = [];
@@ -1202,7 +1230,7 @@ async function loadAll(){
   const { data:{ session } } = await sb.auth.getSession();
   MYID = session ? session.user.id : null;
 
-  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc, acc, wg, wp, cs, wr, wc, ar, acmt] = await Promise.all([
+  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc, acc, wg, wp, cs, wr, wc, ar, acmt, sug, sv] = await Promise.all([
     sb.from('profiles').select('*').order('created_at'),
     sb.from('trips').select('*'),
     sb.from('results').select('*'),
@@ -1224,6 +1252,8 @@ async function loadAll(){
     sb.from('wager_comments').select('*').order('created_at', { ascending:true }),
     sb.from('accolade_reactions').select('*'),
     sb.from('accolade_comments').select('*').order('created_at', { ascending:true }),
+    sb.from('trip_suggestions').select('*').order('created_at', { ascending:true }),
+    sb.from('suggestion_votes').select('*'),
   ]);
 
   MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, birthday:p.birthday||null, pic:p.avatar_url }));
@@ -1308,6 +1338,12 @@ async function loadAll(){
   });
   ACOMMENTS = {};
   (acmt.data||[]).forEach(c=>{ (ACOMMENTS[c.accolade_id]=ACOMMENTS[c.accolade_id]||[]).push({ id:c.id, by:c.profile_id, body:c.body }); });
+
+  // Weaver's Suggestion Box — member-submitted trip ideas + upvotes
+  SUGGESTIONS = (sug.data||[]).map(s=>({ id:s.id, location:s.location||'', by:s.created_by, votes:0, mine:false }));
+  const sugById = {}; SUGGESTIONS.forEach(s=> sugById[s.id]=s);
+  (sv.data||[]).forEach(v=>{ const s=sugById[v.suggestion_id]; if(s){ s.votes++; if(MYID && v.profile_id===MYID) s.mine=true; } });
+  SUGGESTIONS.sort((a,b)=> b.votes-a.votes || String(a.location).localeCompare(String(b.location)));
 }
 async function reload(){ await loadAll(); renderAll(); }
 
@@ -2270,6 +2306,11 @@ function renderVote(){
     ? `<div class="prevbreak">${Object.keys(c.perDest).map(id=>{ const d=DESTS.find(x=>x.id===id); return `${esc(d?d.name:'Previous')} &times;${c.perDest[id]}`; }).join(' · ')}</div>`
     : '';
   const leader = voteLeader();
+  const sugCount = SUGGESTIONS.length;
+  const sugBoxRow = `<button type="button" class="voteopt sugbox-row" onclick="openSuggestBox()" title="Suggest a spot or vote on ideas">
+      <span class="vlabel">📮 Weaver's Suggestion Box!${sugCount?`<span class="vmine" style="color:var(--ink-soft);background:none;border:0;padding:0">${sugCount} idea${sugCount===1?'':'s'}</span>`:''}</span>
+      <span class="vtally" style="min-width:auto">&rsaquo;</span>
+    </button>`;
   el.innerHTML = `<div class="card"><div class="pad">
     <div class="head-row" style="margin-bottom:4px">
       <h3 class="disp" style="margin:0;color:var(--ink)">2027 Trip</h3>
@@ -2282,6 +2323,7 @@ function renderVote(){
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
       ${VOTE_OPTIONS.map(o=>optRow(o, c.direct[o.label]||0)).join('')}
       ${anyRow}
+      ${sugBoxRow}
       ${breakdown}
       ${VOTE_OPTIONS.length===0?'<p class="secnote">No trips to vote on yet.'+(isAdmin()?' Use “+ Add a trip” to suggest some.':'')+'</p>':''}
     </div>
@@ -2348,6 +2390,98 @@ async function clearMyVote(){ if(gateBlock())return; if(patronBlock("vote on tri
   const { error } = await sb.from('trip_votes').delete().eq('poll','2027').eq('profile_id',MYID);
   if(error){ toast(friendly(error)); return; }
   await reload(); go('clubhouse'); toast("Vote withdrawn");
+}
+
+/* ===== Weaver's Suggestion Box — member-submitted trip ideas + upvotes ===== */
+function openSuggestBox(){ suggestMode='menu'; renderSuggest(); openModal('suggestScrim'); }
+function suggestSetMode(m){ suggestMode = m; renderSuggest(); }
+function renderSuggest(){
+  const el = $("#suggestBody"); if(!el) return;
+  if(suggestMode==='create'){
+    if(!isAuthed()){ suggestMode='menu'; }
+    else {
+      el.innerHTML = `<p class="sub">Pitch a spot for a future trip. It drops into the box for everyone to vote on.</p>
+        <div class="field"><label class="f">Where should we go?</label>
+          <input id="sug_loc" placeholder="e.g. Bandon Dunes, OR" onkeydown="if(event.key==='Enter')createSuggestion()"></div>
+        <div class="modal-foot">
+          <button class="linklike" onclick="suggestSetMode('menu')">&lsaquo; Back</button>
+          <div style="margin-left:auto;display:flex;gap:10px">
+            <button class="btn ghost" onclick="closeModal('suggestScrim')">Cancel</button>
+            <button class="btn" onclick="createSuggestion()">Add suggestion</button>
+          </div>
+        </div>`;
+      setTimeout(()=>{ const i=$("#sug_loc"); if(i) i.focus(); }, 30);
+      return;
+    }
+  }
+  if(suggestMode==='list'){
+    const rows = SUGGESTIONS.length ? SUGGESTIONS.map((s,i)=>{
+      const canRm = isAdmin() || (isAuthed() && s.by===MYID);
+      return `<div class="sugrow${s.mine?' mine':''}">
+        <span class="sugrank">${i+1}</span>
+        <span class="sugloc"><span class="n">${esc(s.location)}</span><span class="m">by ${esc(nameOf(s.by))}</span></span>
+        <button class="sugvote${s.mine?' on':''}" onclick="voteSuggestion('${s.id}')" title="${s.mine?'Remove your vote':'Vote for this'}">${s.mine?'&#10003; Voted':'&#9650; Vote'} <span class="cnt">${s.votes}</span></button>
+        ${canRm?`<button class="sugrm" title="Delete" onclick="deleteSuggestion('${s.id}')">&times;</button>`:''}
+      </div>`;
+    }).join("") : `<p class="secnote" style="margin-top:10px">No suggestions yet — be the first to add one.</p>`;
+    el.innerHTML = `<p class="sub">Most popular ideas rise to the top. ${isAuthed()&&!isPatron()?'Vote for as many as you like.':''}</p>
+      <div class="suglist">${rows}</div>
+      <div class="modal-foot" style="margin-top:16px">
+        <button class="linklike" onclick="suggestSetMode('menu')">&lsaquo; Back</button>
+        <div style="margin-left:auto;display:flex;gap:10px">
+          ${(isAuthed()&&!isPatron())?`<button class="btn ghost" onclick="suggestSetMode('create')">+ New suggestion</button>`:''}
+          <button class="btn" onclick="closeModal('suggestScrim')">Done</button>
+        </div>
+      </div>`;
+    return;
+  }
+  // menu
+  const canAdd = isAuthed() && !isPatron();
+  el.innerHTML = `<p class="sub">Suggest a spot, or vote on the ideas already in the box.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+      ${canAdd ? `<button class="authpick" onclick="suggestSetMode('create')">
+        <span class="ap-emblem" style="background:var(--brass);color:#2a200a">✎</span>
+        <span class="ap-tx"><b>Create Suggestion</b><small>Add a custom location to the box.</small></span>
+      </button>` : ''}
+      <button class="authpick" onclick="suggestSetMode('list')">
+        <span class="ap-emblem" style="background:var(--patron);color:#fff">★</span>
+        <span class="ap-tx"><b>View / Vote On Suggestions</b><small>${SUGGESTIONS.length} idea${SUGGESTIONS.length===1?'':'s'} so far — ranked by votes.</small></span>
+      </button>
+    </div>
+    ${!isAuthed()?`<div class="secnote" style="margin-top:14px"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="closeModal('suggestScrim');openAuth('signin')">Sign in</button> to add or vote on suggestions.</div>`
+      : isPatron()?`<div class="secnote" style="margin-top:14px">Patrons can view suggestions, but only trip members add or vote on them.</div>`:''}
+    <div class="modal-foot" style="margin-top:16px"><div style="margin-left:auto"><button class="btn ghost" onclick="closeModal('suggestScrim')">Close</button></div></div>`;
+}
+async function createSuggestion(){
+  if(!isAuthed()){ toast("Sign in to suggest"); return; }
+  if(patronBlock("suggest trips")) return;
+  const loc = ($("#sug_loc")?$("#sug_loc").value:"").trim();
+  if(!loc){ toast("Type a location first"); return; }
+  if(loc.length>80){ toast("Keep it under 80 characters"); return; }
+  const dup = SUGGESTIONS.find(s=>s.location.toLowerCase()===loc.toLowerCase());
+  if(dup){ toast("That's already in the box — vote for it instead"); suggestSetMode('list'); return; }
+  const { error } = await sb.from('trip_suggestions').insert({ location:loc, created_by:MYID });
+  if(error){ toast(friendly(error)); return; }
+  await reload();
+  suggestSetMode('list');
+  toast("Suggestion added");
+}
+async function voteSuggestion(id){
+  if(!isAuthed()){ toast("Sign in to vote"); closeModal('suggestScrim'); openAuth('signin'); return; }
+  if(patronBlock("vote on trips")) return;
+  const s = SUGGESTIONS.find(x=>x.id===id); const mine = s && s.mine;
+  let res;
+  if(mine) res = await sb.from('suggestion_votes').delete().eq('suggestion_id',id).eq('profile_id',MYID);
+  else     res = await sb.from('suggestion_votes').upsert({ suggestion_id:id, profile_id:MYID }, { onConflict:'suggestion_id,profile_id' });
+  if(res.error){ toast(friendly(res.error)); return; }
+  await reload();
+  renderSuggest();
+}
+async function deleteSuggestion(id){
+  const { error } = await sb.from('trip_suggestions').delete().eq('id', id);
+  if(error){ toast(friendly(error)); return; }
+  await reload();
+  renderSuggest();
 }
 /* ---- admin: add / edit / photo a trip option ---- */
 let pendingVoteImg = null, voteImgCurrent = null, voteImgCleared = false, editingVoteOpt = null;
