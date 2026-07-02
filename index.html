@@ -558,7 +558,9 @@
   .lb-social:empty{display:none}
   .lb-social .card{background:var(--paper);border-radius:12px;padding:14px 16px;color:var(--ink)}
   .lb-social .comments{margin-top:12px;border-top:1px solid var(--rule);padding-top:10px;display:flex;flex-direction:column;gap:8px}
-  .gmeta{position:absolute;left:8px;bottom:8px;display:flex;gap:8px;font-size:11px;font-weight:700;
+  /* activity badge floats near the bottom of the image (img is 200px tall),
+     sitting above the "Shared by" caption rather than overlapping it */
+  .gmeta{position:absolute;left:8px;top:200px;transform:translateY(calc(-100% - 8px));display:flex;gap:8px;font-size:11px;font-weight:700;
     color:#fff;background:rgba(20,39,28,.72);border-radius:999px;padding:3px 9px;font-family:"Spline Sans Mono",monospace;pointer-events:none}
   /* Birthday banner — golf-themed, shows only on a member's birthday */
   .bday-banner{position:relative;overflow:hidden;border-radius:16px;margin-bottom:18px;padding:22px 24px;
