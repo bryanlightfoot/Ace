@@ -560,6 +560,32 @@
   .lb-social .comments{margin-top:12px;border-top:1px solid var(--rule);padding-top:10px;display:flex;flex-direction:column;gap:8px}
   .gmeta{position:absolute;left:8px;bottom:8px;display:flex;gap:8px;font-size:11px;font-weight:700;
     color:#fff;background:rgba(20,39,28,.72);border-radius:999px;padding:3px 9px;font-family:"Spline Sans Mono",monospace;pointer-events:none}
+  /* Birthday banner — golf-themed, shows only on a member's birthday */
+  .bday-banner{position:relative;overflow:hidden;border-radius:16px;margin-bottom:18px;padding:22px 24px;
+    background:linear-gradient(135deg,var(--pine) 0%,var(--pine-2) 100%);border:1px solid var(--brass);box-shadow:var(--shadow)}
+  .bday-banner::before{content:"";position:absolute;inset:0;background:
+    radial-gradient(circle at 12% 20%,rgba(196,154,74,.22),transparent 40%),
+    radial-gradient(circle at 88% 80%,rgba(196,154,74,.18),transparent 42%);pointer-events:none}
+  .bday-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+  .bday-confetti span{position:absolute;top:-26px;font-size:16px;opacity:0;
+    animation-name:bdayfall;animation-timing-function:linear;animation-iteration-count:infinite}
+  @keyframes bdayfall{
+    0%{transform:translateY(-26px) rotate(0);opacity:0}
+    12%{opacity:.95}
+    88%{opacity:.95}
+    100%{transform:translateY(200px) rotate(340deg);opacity:0}
+  }
+  .bday-inner{position:relative;z-index:1;display:flex;align-items:center;gap:20px;justify-content:center;flex-wrap:wrap;text-align:center}
+  .bday-avas{display:flex;align-items:center}
+  .bday-avas .avatar{border:2px solid var(--brass);margin-left:-12px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .bday-avas .avatar:first-child{margin-left:0}
+  .bday-cake{font-size:30px;margin-left:10px;animation:bdaybob 2.2s ease-in-out infinite}
+  @keyframes bdaybob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-5px) rotate(4deg)}}
+  .bday-tx{color:var(--paper-on-pine)}
+  .bday-eyebrow{font-family:"Spline Sans Mono",monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass)}
+  .bday-name{font-family:"Bodoni Moda",serif;font-weight:700;font-size:clamp(26px,5vw,34px);line-height:1.1;color:var(--paper-on-pine);margin:3px 0 6px}
+  .bday-sub{color:var(--mut-on-pine);font-size:14px;max-width:540px;margin:0 auto}
+  @media(prefers-reduced-motion:reduce){ .bday-confetti{display:none} .bday-cake{animation:none} }
 
   /* ---------- 2027 vote ballot ---------- */
   .voteopt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--rule);border-radius:10px;cursor:pointer;background:rgba(255,255,255,.4)}
@@ -1426,6 +1452,49 @@ function randomGallery(n){
   for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
   return a.slice(0, n);
 }
+function birthdaysToday(){
+  const now=new Date(); const mm=now.getMonth()+1, dd=now.getDate();
+  return MEMBERS.filter(m=>{
+    if(!m.birthday) return false;
+    const p=String(m.birthday).split('-');
+    if(p.length<3) return false;
+    return parseInt(p[1],10)===mm && parseInt(p[2],10)===dd;
+  });
+}
+function birthdayBanner(){
+  const list=birthdaysToday();
+  if(!list.length) return '';
+  const firsts=list.map(m=>((m.name||'').trim().split(/\s+/)[0])||m.name).filter(Boolean);
+  const nameStr = firsts.length>1 ? (firsts.slice(0,-1).join(', ')+' &amp; '+firsts[firsts.length-1]) : firsts[0];
+  const avatars = list.slice(0,5).map(m=>avatarHTML(m,60)).join('');
+  const puns=[
+    "wishing you a hole-in-one kind of day",
+    "may your drives fly far and your putts drop true",
+    "here's to a birthday well under par",
+    "hope it's an eagle of a day",
+    "may the fairways be kind to you today"
+  ];
+  const pun = puns[(new Date().getDate()) % puns.length];
+  let who;
+  if(list.length>1){ who = `${esc(nameStr)} are celebrating today`; }
+  else { const a=memberAge(list[0]); who = `${esc(list[0].name)}${a!=null?` is turning ${a}`:''} today`; }
+  let conf=''; const ico=['🎉','🎊','⛳','🏌️','🎈','🏆','✨'];
+  for(let i=0;i<16;i++){
+    const x=Math.round(Math.random()*100), d=(Math.random()*4).toFixed(2), dur=(4+Math.random()*3).toFixed(2);
+    conf+=`<span style="left:${x}%;animation-delay:${d}s;animation-duration:${dur}s">${ico[Math.floor(Math.random()*ico.length)]}</span>`;
+  }
+  return `<div class="bday-banner">
+    <div class="bday-confetti">${conf}</div>
+    <div class="bday-inner">
+      <div class="bday-avas">${avatars}<span class="bday-cake">🎂</span></div>
+      <div class="bday-tx">
+        <div class="bday-eyebrow">⛳ Happy Birthday ⛳</div>
+        <div class="bday-name">Happy Birthday, ${nameStr}!</div>
+        <div class="bday-sub">${who} — ${pun}. 🎉</div>
+      </div>
+    </div>
+  </div>`;
+}
 function renderClubhouse(){
   const el = $("#clubhouse");
   if(TRIPS.length===0 && DESTS.length===0){ el.innerHTML = emptyWelcome(); return; }
@@ -1436,6 +1505,7 @@ function renderClubhouse(){
   const tlc = teamLowballChampion();
   const recent = randomGallery(6);
   el.innerHTML = `
+    ${birthdayBanner()}
     <div class="grid g2">
       <div class="card hero">
         <div class="pad">
