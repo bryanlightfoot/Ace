@@ -340,6 +340,10 @@
   .memblem{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
     margin-right:5px;border-radius:4px;background:var(--brass);color:#2a200a;
     font-family:"Hanken Grotesk",sans-serif;font-weight:800;font-size:10px;line-height:1;vertical-align:middle}
+  /* patron marker — intentionally plainer/greyer than the gold member M */
+  .pemblem{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+    margin-right:5px;border-radius:4px;background:#9a958a;color:#f4f1ea;
+    font-family:"Hanken Grotesk",sans-serif;font-weight:700;font-size:10px;line-height:1;vertical-align:middle}
   /* sign-up account-type chooser */
   .authpick{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
     background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;color:var(--ink)}
@@ -547,9 +551,15 @@
   /* ---------- lightbox ---------- */
   .lightbox{position:fixed;inset:0;background:rgba(8,16,11,.88);display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
   .lightbox.on{display:flex}
-  .lb-inner{max-width:min(1100px,94vw);max-height:90vh;display:flex;flex-direction:column;gap:12px;align-items:center}
-  .lb-inner img{max-width:100%;max-height:80vh;border-radius:10px;box-shadow:var(--shadow);object-fit:contain}
+  .lb-inner{max-width:min(1100px,94vw);max-height:90vh;display:flex;flex-direction:column;gap:12px;align-items:center;overflow-y:auto}
+  .lb-inner img{max-width:100%;max-height:72vh;border-radius:10px;box-shadow:var(--shadow);object-fit:contain}
   .lb-bar{display:flex;gap:10px}
+  .lb-social{width:min(680px,94vw);text-align:left}
+  .lb-social:empty{display:none}
+  .lb-social .card{background:var(--paper);border-radius:12px;padding:14px 16px;color:var(--ink)}
+  .lb-social .comments{margin-top:12px;border-top:1px solid var(--rule);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+  .gmeta{position:absolute;left:8px;bottom:8px;display:flex;gap:8px;font-size:11px;font-weight:700;
+    color:#fff;background:rgba(20,39,28,.72);border-radius:999px;padding:3px 9px;font-family:"Spline Sans Mono",monospace;pointer-events:none}
 
   /* ---------- 2027 vote ballot ---------- */
   .voteopt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--rule);border-radius:10px;cursor:pointer;background:rgba(255,255,255,.4)}
@@ -952,6 +962,7 @@
       <a id="lb_open" href="#" target="_blank" rel="noopener" class="btn ghost tiny">Open full size &#8599;</a>
       <button class="btn ghost tiny" onclick="closeLightbox()">Close</button>
     </div>
+    <div class="lb-social" id="lb_social"></div>
   </div>
 </div>
 
@@ -1164,6 +1175,7 @@ let ACCOLADES = [], WAGERS = [];
 let SUGGESTIONS = []; let suggestMode = 'menu';
 let ALIKES = {}, ADISLIKES = {}, AMYREACT = {}, ACOMMENTS = {};
 let WLIKES = {}, WDISLIKES = {}, WMYREACT = {}, WCOMMENTS = {};
+let GLIKES = {}, GDISLIKES = {}, GMYREACT = {}, GCOMMENTS = {}; let lbGalleryId = null;
 let COURSES = [];
 const ANY_PREV = "Any Previous Trip";
 let MYID = null;
@@ -1230,7 +1242,7 @@ async function loadAll(){
   const { data:{ session } } = await sb.auth.getSession();
   MYID = session ? session.user.id : null;
 
-  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc, acc, wg, wp, cs, wr, wc, ar, acmt, sug, sv] = await Promise.all([
+  const [pf, tr, rs, ac, ds, vt, gl, dl, dc, vo, tvotes, prs, sc, acc, wg, wp, cs, wr, wc, ar, acmt, sug, sv, gr, gc] = await Promise.all([
     sb.from('profiles').select('*').order('created_at'),
     sb.from('trips').select('*'),
     sb.from('results').select('*'),
@@ -1254,6 +1266,8 @@ async function loadAll(){
     sb.from('accolade_comments').select('*').order('created_at', { ascending:true }),
     sb.from('trip_suggestions').select('*').order('created_at', { ascending:true }),
     sb.from('suggestion_votes').select('*'),
+    sb.from('gallery_reactions').select('*'),
+    sb.from('gallery_comments').select('*').order('created_at', { ascending:true }),
   ]);
 
   MEMBERS = (pf.data||[]).map(p=>({ id:p.id, name:p.name, role:p.role, handicap:p.handicap, age:p.age, birthday:p.birthday||null, pic:p.avatar_url }));
@@ -1344,6 +1358,16 @@ async function loadAll(){
   const sugById = {}; SUGGESTIONS.forEach(s=> sugById[s.id]=s);
   (sv.data||[]).forEach(v=>{ const s=sugById[v.suggestion_id]; if(s){ s.votes++; if(MYID && v.profile_id===MYID) s.mine=true; } });
   SUGGESTIONS.sort((a,b)=> b.votes-a.votes || String(a.location).localeCompare(String(b.location)));
+
+  // gallery reactions (value 1 = like, -1 = dislike) + comments
+  GLIKES = {}; GDISLIKES = {}; GMYREACT = {};
+  (gr.data||[]).forEach(r=>{ const v=Number(r.value);
+    if(v>0) GLIKES[r.gallery_id]=(GLIKES[r.gallery_id]||0)+1;
+    else if(v<0) GDISLIKES[r.gallery_id]=(GDISLIKES[r.gallery_id]||0)+1;
+    if(MYID && r.profile_id===MYID) GMYREACT[r.gallery_id]=v;
+  });
+  GCOMMENTS = {};
+  (gc.data||[]).forEach(c=>{ (GCOMMENTS[c.gallery_id]=GCOMMENTS[c.gallery_id]||[]).push({ id:c.id, by:c.profile_id, body:c.body }); });
 }
 async function reload(){ await loadAll(); renderAll(); }
 
@@ -2143,8 +2167,9 @@ function voteLeader(){
   return arr[0]||null;
 }
 function nameOf(pid){ const m=MEMBERS.find(x=>x.id===pid); return m?m.name:"Member"; }
-/* golden "M" badge shown by a member's name on comments; patrons get nothing */
-function memberEmblem(pid){ const m=MEMBERS.find(x=>x.id===pid); return (m && m.role!=='patron') ? `<span class="memblem" title="Member">M</span>` : ''; }
+/* comment name badges: gold "M" for members, muted "P" for patrons */
+function memberEmblem(pid){ const m=MEMBERS.find(x=>x.id===pid); if(!m) return '';
+  return m.role==='patron' ? `<span class="pemblem" title="Patron">P</span>` : `<span class="memblem" title="Member">M</span>`; }
 async function reactDest(id, val){ if(gateBlock())return;
   if(!isAuthed()){ toast("Sign in to react"); openAuth('signin'); return; }
   const cur = DMYREACT[id];
@@ -3752,7 +3777,9 @@ async function removeGalleryPhoto(id){
 /* ---- lightbox (click a photo to view / save) ---- */
 function openGalleryLightbox(id){
   const g = GALLERY.find(x=>x.id===id); if(!g) return;
+  lbGalleryId = id;
   openLightbox(g.url, g.by ? nameOf(g.by) : '');
+  renderLbSocial();
 }
 function openLightbox(url, who){
   const i=$("#lb_img"); if(i) i.src=url;
@@ -3760,10 +3787,58 @@ function openLightbox(url, who){
   const c=$("#lb_cred"); if(c) c.textContent = who ? ('Shared by '+who) : '';
   const l=$("#lightbox"); if(l) l.classList.add('on');
 }
+function renderLbSocial(){
+  const el=$("#lb_social"); if(!el) return;
+  const g = lbGalleryId ? GALLERY.find(x=>x.id===lbGalleryId) : null;
+  el.innerHTML = g ? `<div class="card">${gallerySocial(g)}</div>` : '';
+}
 function closeLightbox(){
   const l=$("#lightbox"); if(l) l.classList.remove('on');
   const i=$("#lb_img"); if(i) i.src='';
   const c=$("#lb_cred"); if(c) c.textContent='';
+  const s=$("#lb_social"); if(s) s.innerHTML='';
+  lbGalleryId = null;
+}
+/* like / dislike + comments for a photo — open to members AND patrons */
+function gallerySocial(g){
+  const my = GMYREACT[g.id];
+  const likes = GLIKES[g.id]||0, dislikes = GDISLIKES[g.id]||0;
+  const comments = GCOMMENTS[g.id]||[];
+  return `<div class="wg-social" style="margin-top:0">
+      <button class="likebtn up${my===1?' on':''}" onclick="reactGallery('${g.id}',1)" title="${my===1?'Remove like':'Like'}">&#128077; <span>${likes}</span></button>
+      <button class="likebtn down${my===-1?' on':''}" onclick="reactGallery('${g.id}',-1)" title="${my===-1?'Remove dislike':'Dislike'}">&#128078; <span>${dislikes}</span></button>
+    </div>
+    <div class="comments">
+      ${comments.map(c=>`<div class="cmt"><span class="cmt-name">${memberEmblem(c.by)}${esc(nameOf(c.by))}</span><span class="cmt-body">${esc(c.body)}</span>${(isAdmin()||c.by===MYID)?`<button class="cmt-del" title="Delete" onclick="deleteGalleryComment('${c.id}')">&times;</button>`:''}</div>`).join("")}
+      ${isAuthed()
+        ? `<div class="cmt-add"><input id="gc_${g.id}" placeholder="Add a comment…" onkeydown="if(event.key==='Enter')postGalleryComment('${g.id}')"><button class="btn ghost tiny" onclick="postGalleryComment('${g.id}')">Post</button></div>`
+        : `<div class="cmt-signin"><button class="linklike" style="color:var(--brass-deep);font-weight:600" onclick="closeLightbox();openAuth('signin')">Sign in</button> to react or comment.</div>`}
+    </div>`;
+}
+async function reactGallery(id, val){ if(gateBlock())return;
+  if(!isAuthed()){ toast("Sign in to react"); closeLightbox(); openAuth('signin'); return; }
+  const cur = GMYREACT[id];
+  let res;
+  if(cur===val){
+    res = await sb.from('gallery_reactions').delete().eq('gallery_id',id).eq('profile_id',MYID);
+  } else {
+    res = await sb.from('gallery_reactions').upsert({ gallery_id:id, profile_id:MYID, value:val }, { onConflict:'gallery_id,profile_id' });
+  }
+  if(res.error){ toast(friendly(res.error)); return; }
+  await reload(); renderLbSocial();
+}
+async function postGalleryComment(id){ if(gateBlock())return;
+  if(!isAuthed()){ toast("Sign in to comment"); closeLightbox(); openAuth('signin'); return; }
+  const inp=$("#gc_"+id); const body=inp?inp.value.trim():"";
+  if(!body) return;
+  const { error } = await sb.from('gallery_comments').insert({ gallery_id:id, profile_id:MYID, body });
+  if(error){ toast(friendly(error)); return; }
+  await reload(); renderLbSocial();
+}
+async function deleteGalleryComment(cid){
+  const { error } = await sb.from('gallery_comments').delete().eq('id', cid);
+  if(error){ toast(friendly(error)); return; }
+  await reload(); renderLbSocial();
 }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeLightbox(); });
 function renderGallery(){
@@ -3790,9 +3865,12 @@ function renderGallery(){
       <div class="ggrid">${photos.map(g=>{
         const canDel = isAdmin() || (me && me.id===g.by);
         const who = g.by ? esc(nameOf(g.by)) : '';
+        const gl = GLIKES[g.id]||0, gd = GDISLIKES[g.id]||0, gcm = (GCOMMENTS[g.id]||[]).length;
+        const badge = (gl||gd||gcm) ? `<div class="gmeta">${gl?`&#128077; ${gl}`:''}${gd?`&nbsp;&#128078; ${gd}`:''}${gcm?`&nbsp;&#128172; ${gcm}`:''}</div>` : '';
         return `<figure class="gcard" onclick="openGalleryLightbox('${g.id}')">
           <img src="${esc(g.url)}" alt="${esc(trip)}" loading="lazy">
           ${canDel?`<button class="gdel" title="Remove" onclick="event.stopPropagation();removeGalleryPhoto('${g.id}')">&times;</button>`:''}
+          ${badge}
           ${who?`<figcaption class="gcred">Shared by ${who}</figcaption>`:''}
         </figure>`;
       }).join('')}</div>
