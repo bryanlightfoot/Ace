@@ -461,6 +461,30 @@
     padding:5px 6px;border-radius:8px}
   .wg-check:hover{background:rgba(46,74,56,.06)}
   .wg-check input{width:auto;margin:0}
+  /* ---- per-line wager settlement ---- */
+  .oc-line{border:1px solid var(--rule);border-radius:10px;padding:12px 12px 10px;margin-bottom:10px;background:rgba(46,74,56,.03)}
+  .oc-line-head{display:flex;align-items:baseline;gap:6px;font-size:14px;font-weight:600;color:var(--ink);margin-bottom:9px}
+  .oc-line-amt{margin-left:auto;font-family:"Spline Sans Mono",monospace;font-weight:700;color:var(--brass-deep)}
+  .oc-choices{display:flex;flex-wrap:wrap;gap:7px}
+  .oc-choice{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);cursor:pointer;
+    border:1px solid var(--rule);border-radius:999px;padding:5px 11px 5px 6px;background:var(--paper);transition:background .12s,border-color .12s}
+  .oc-choice:hover{background:rgba(46,74,56,.06)}
+  .oc-choice input{width:auto;margin:0}
+  .oc-choice:has(input:checked){border-color:var(--fairway);background:rgba(76,138,90,.14);font-weight:600}
+  .oc-choice.oc-push:has(input:checked){border-color:var(--brass);background:rgba(196,154,74,.16)}
+  .oc-preview{margin:12px 0 4px;min-height:20px}
+  .oc-preview-lab,.wg-proposal-lab{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass-deep);font-weight:700;margin-bottom:7px}
+  .oc-preview-hint{font-size:13px;color:var(--ink-soft);font-style:italic}
+  .wg-nets{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .wg-net{font-size:13px;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:4px 11px;background:var(--paper)}
+  .wg-net b{font-family:"Spline Sans Mono",monospace}
+  .wg-net.up{border-color:var(--fairway);background:rgba(76,138,90,.13)}
+  .wg-net.up b{color:var(--fairway)}
+  .wg-net.down{border-color:var(--flag);background:rgba(178,58,46,.10)}
+  .wg-net.down b{color:var(--flag)}
+  .wg-net.push{font-style:italic;color:var(--ink-soft)}
+  .wg-push{color:var(--brass-deep);font-weight:600}
+  .wg-settled{border-top:1px dashed var(--rule);padding-top:10px;margin-top:4px}
 
   .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px}
   .mcard{border:1px solid var(--rule);border-top:4px solid var(--brass);border-radius:12px;padding:20px 16px 18px;
@@ -1065,8 +1089,9 @@
 <div class="scrim" id="outcomeScrim">
   <div class="modal">
     <h3>Settle the wager</h3>
-    <p class="sub">Name who won. Everyone in the bet confirms before it's marked Completed — if someone disagrees they can dispute and re-propose.</p>
-    <div class="field"><label class="f">Winner</label><select id="oc_winner"></select></div>
+    <p class="sub">Pick who won each line — or call it a push to void that line. The net profit &amp; loss is worked out automatically. Everyone in the bet confirms before it's marked Completed; if someone disagrees they can dispute and re-propose.</p>
+    <div id="oc_lines"></div>
+    <div class="oc-preview" id="oc_preview"></div>
     <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
       <button class="btn ghost" onclick="closeModal('outcomeScrim')">Cancel</button>
       <button class="btn" onclick="submitOutcome()">Propose outcome</button>
@@ -1376,10 +1401,14 @@ async function loadAll(){
     lines = lines.filter(l=>l && Number(l.amount)>0).map(l=>({ amount:Number(l.amount), desc:(l.desc||'').toString() }));
     if(!lines.length){ const amt=Number(w.amount); if(!isNaN(amt)&&amt>0) lines=[{ amount:amt, desc:(w.terms||'').toString() }]; }
     const total = lines.reduce((s,l)=>s+l.amount,0) || (Number(w.amount)||0);
+    // per-line settlement outcomes (parallel to lines): each { winner:<pid> } or { push:true }
+    let lineOutcomes = null;
+    if(w.line_outcomes){ try{ lineOutcomes = (typeof w.line_outcomes==='string') ? JSON.parse(w.line_outcomes) : w.line_outcomes; }catch(e){ lineOutcomes = null; } }
+    if(!Array.isArray(lineOutcomes) || !lineOutcomes.length) lineOutcomes = null;
     return {
       id:w.id, by:w.created_by, amount:w.amount, total, lines, terms:w.terms, status:w.status||'unaccepted',
       proposedWinner:w.proposed_winner_id, winnerId:w.winner_id, isPush:!!w.is_push, counterBy:w.counter_by||null,
-      course:w.course||'',
+      course:w.course||'', lineOutcomes,
       parties: partyByWager[w.id]||[]
     };
   });
@@ -1858,35 +1887,103 @@ async function deleteAccolade(){
    ============================================================ */
 const wagerParty = (w, pid)=> w.parties.find(p=>p.pid===pid) || null;
 const iAmParty = (w)=> !!wagerParty(w, MYID);
-function wagerWinnerName(w){
-  if(w.isPush) return "Push — bets off";
-  const id = w.winnerId || w.proposedWinner;
-  return id ? nameOf(id) : "—";
-}
-
-/* ---- wager money helpers + lifetime standings ----
-   A settled wager (status 'completed', a winner, not a push) is zero-sum:
-   the winner gains the stake, the losing parties split that stake evenly.
-   Pushes and unsettled wagers move no money. This feeds both the Record-tab
-   Wagers leaderboard and the per-member quick reference in Members. */
 const netMoney = n => {
   const v = Math.round((Number(n)||0)*100)/100;
   if(v>0) return '+'+money(v);
   if(v<0) return '\u2212'+money(Math.abs(v));
   return money(0);
 };
+
+/* ---- per-line wager settlement engine ----
+   Each bet line is settled independently: it has one winner among the parties,
+   or it's a push (voided — no money moves). For every settled line the winner
+   collects the line's amount; the other parties split that amount evenly. A
+   1-v-1 line therefore just moves the stake from loser to winner. Summing every
+   line gives each person's net profit/loss on the whole wager. Legacy wagers
+   with a single overall winner (no per-line data) fall back to the old logic. */
+const linesOf = w => (w.lines && w.lines.length) ? w.lines : [{ amount:w.amount, desc:w.terms }];
+function lineOutcomesFor(w){
+  if(w.lineOutcomes && w.lineOutcomes.length) return w.lineOutcomes;
+  return null;
+}
+/* has an outcome been proposed (per-line data, or a legacy single winner/push)? */
+const outcomeProposed = w => !!(w.lineOutcomes && w.lineOutcomes.length) || w.isPush || !!w.proposedWinner;
+/* net profit/loss for each party on a single wager → { pid: net } */
+function wagerNets(w){
+  const parties = w.parties.map(p=>p.pid).filter(Boolean);
+  const nets = {}; parties.forEach(pid=> nets[pid]=0);
+  const lines = linesOf(w);
+  const outs = lineOutcomesFor(w);
+  if(outs){
+    lines.forEach((l,i)=>{
+      const o = outs[i]; if(!o || o.push || !o.winner) return;      // push / undecided → no money
+      const amt = Number(l.amount)||0; if(amt<=0) return;
+      const losers = parties.filter(pid=>pid!==o.winner);
+      if(!losers.length) return;
+      const share = amt/losers.length;
+      nets[o.winner]+=amt; losers.forEach(pid=> nets[pid]-=share);
+    });
+    return nets;
+  }
+  // legacy: single overall winner takes the whole stake, losers split it
+  if(w.isPush || !w.winnerId) return nets;
+  const amount = Number(w.total!=null?w.total:w.amount)||0;
+  const losers = parties.filter(pid=>pid!==w.winnerId);
+  if(amount>0 && losers.length){ const share=amount/losers.length; nets[w.winnerId]+=amount; losers.forEach(pid=> nets[pid]-=share); }
+  return nets;
+}
+/* concise "who came out ahead" summary for history/notifications */
+function wagerWinnerName(w){
+  const outs = lineOutcomesFor(w);
+  if(outs){
+    const nets = wagerNets(w);
+    const ranked = Object.keys(nets).map(pid=>({ pid, n:Math.round((nets[pid]||0)*100)/100 })).sort((a,b)=>b.n-a.n);
+    if(!ranked.length || ranked.every(x=>x.n===0)) return "Push — bets off";
+    return `${nameOf(ranked[0].pid)} (${netMoney(ranked[0].n)})`;
+  }
+  if(w.isPush) return "Push — bets off";
+  const id = w.winnerId || w.proposedWinner;
+  return id ? nameOf(id) : "—";
+}
+/* itemised per-line results (winner / push per line), for proposals + history */
+function wagerLineResultsHTML(w){
+  const outs = lineOutcomesFor(w); if(!outs) return '';
+  const lines = linesOf(w);
+  return `<div class="wg-lines">`+lines.map((l,i)=>{
+    const o = outs[i]||{};
+    const res = o.push ? `<span class="wg-push">Push</span>` : (o.winner? esc(nameOf(o.winner)) : '—');
+    return `<div class="wg-line"><span class="wg-line-d"><span class="wg-line-num">${i+1}.</span>${esc(l.desc||('Bet '+(i+1)))}</span><span class="wg-line-a">${res} · ${money(l.amount)}</span></div>`;
+  }).join('')+`</div>`;
+}
+/* profit / loss chips per party for a wager (proposed or settled) */
+function wagerNetsHTML(w){
+  const nets = wagerNets(w);
+  const items = w.parties.map(p=>p.pid).filter(Boolean)
+    .map(pid=>({ pid, n:Math.round((nets[pid]||0)*100)/100 }))
+    .sort((a,b)=> b.n-a.n);
+  if(!items.length || items.every(x=>x.n===0)) return `<div class="wg-nets"><span class="wg-net push">Everything pushed — no money changes hands</span></div>`;
+  return `<div class="wg-nets">`+items.map(x=>
+    `<span class="wg-net ${x.n>0?'up':(x.n<0?'down':'even')}">${esc(nameOf(x.pid))} <b>${netMoney(x.n)}</b></span>`
+  ).join('')+`</div>`;
+}
+
+/* ---- lifetime standings: sum each member's net across all completed wagers.
+   Feeds the Record-tab Wagers leaderboard and the Members quick reference. */
 function wagerStandings(){
   const byId = {};
   const ensure = id => (byId[id] = byId[id] || { id, net:0, won:0, lost:0, count:0 });
   WAGERS.forEach(w=>{
-    if(w.status!=='completed' || w.isPush || !w.winnerId) return;
-    const amount = Number(w.total!=null?w.total:w.amount); if(isNaN(amount) || amount<=0) return;
-    const losers = w.parties.filter(p=>p.pid && p.pid!==w.winnerId).map(p=>p.pid);
-    if(!losers.length) return;
-    const share = amount/losers.length;
-    const win = ensure(w.winnerId);
-    win.net += amount; win.won += amount; win.count++;
-    losers.forEach(pid=>{ const l=ensure(pid); l.net -= share; l.lost += share; l.count++; });
+    if(w.status!=='completed') return;
+    const nets = wagerNets(w);
+    const pids = Object.keys(nets);
+    // only count wagers that actually moved money (skip all-push settlements)
+    if(!pids.some(pid=> Math.abs(nets[pid])>0.0049)) return;
+    pids.forEach(pid=>{
+      const n = Math.round((nets[pid]||0)*100)/100;
+      const r = ensure(pid);
+      r.net += n; r.count++;
+      if(n>0) r.won += n; else if(n<0) r.lost += Math.abs(n);
+    });
   });
   const ranked = MEMBERS
     .map(m=> ({ ...(byId[m.id]||{ id:m.id, net:0, won:0, lost:0, count:0 }), name:m.name }))
@@ -2026,7 +2123,7 @@ async function saveCounter(){
   const total = lines.reduce((s,l)=>s+l.amount,0);
   const terms = betTermsFrom(lines);
   try{
-    let { error }=await sb.from('wagers').update({ amount:total, terms, lines, status:'unaccepted', counter_by:MYID, proposed_winner_id:null, is_push:false }).eq('id', id); if(error) throw error;
+    let { error }=await sb.from('wagers').update({ amount:total, terms, lines, status:'unaccepted', counter_by:MYID, proposed_winner_id:null, is_push:false, line_outcomes:null }).eq('id', id); if(error) throw error;
     ({ error }=await sb.from('wager_parties').update({ accepted:false, outcome_ok:false }).eq('wager_id', id)); if(error) throw error;
     ({ error }=await sb.from('wager_parties').update({ accepted:true }).eq('id', mine.id)); if(error) throw error;
   }catch(e){ toast(friendly(e)); return; }
@@ -2039,7 +2136,7 @@ function myWagerAttention(){
   return WAGERS.reduce((n,w)=>{
     const mine = wagerParty(w, MYID); if(!mine) return n;
     if(w.status==='unaccepted' && !mine.accepted) return n+1;
-    if(w.status==='accepted' && (w.isPush||w.proposedWinner) && !mine.outcomeOk) return n+1;
+    if(w.status==='accepted' && outcomeProposed(w) && !mine.outcomeOk) return n+1;
     return n;
   },0);
 }
@@ -2071,13 +2168,13 @@ function mwPendingCard(w){
 }
 function mwActiveCard(w){
   const mine=wagerParty(w,MYID);
-  const proposed = w.isPush||w.proposedWinner;
+  const proposed = outcomeProposed(w);
   let extra='', actions='';
   if(proposed){
-    const who = w.isPush ? 'a push (no winner)' : `${esc(nameOf(w.proposedWinner))} won`;
-    extra = `<div class="wg-proposal">Proposed outcome: <b>${who}</b></div>`;
+    extra = `<div class="wg-proposal"><div class="wg-proposal-lab">Proposed outcome</div>${wagerLineResultsHTML(w)}${wagerNetsHTML(w)}</div>`;
     if(mine && !mine.outcomeOk){
       actions = `<button class="btn tiny" onclick="confirmOutcome('${w.id}')">Agree</button>`
+        + `<button class="btn ghost tiny" onclick="openOutcomeModal('${w.id}')">Change</button>`
         + `<button class="btn ghost tiny" onclick="disputeOutcome('${w.id}')">Dispute</button>`;
     } else { actions = `<span class="wg-note">You agreed — waiting on the others.</span>`; }
   } else {
@@ -2086,9 +2183,16 @@ function mwActiveCard(w){
   return mwShell(w, `Proposed by ${esc(nameOf(w.by))}`, wagerPartyChips(w, proposed?'outcome':'accept')+extra, actions);
 }
 function mwHistoryCard(w){
-  const res = w.status==='declined' ? '🚫 Called off — wager denied.'
-    : (w.isPush ? '🤝 Push — bets off, nobody collected.' : `🏆 <b>${esc(wagerWinnerName(w))}</b> won the wager.`);
-  return mwShell(w, `Proposed by ${esc(nameOf(w.by))}`, `<div class="wg-result" style="font-size:15px">${res}</div>`, '');
+  let body;
+  if(w.status==='declined'){
+    body = `<div class="wg-result" style="font-size:15px">🚫 Called off — wager denied.</div>`;
+  } else if(lineOutcomesFor(w)){
+    body = `<div class="wg-settled"><div class="wg-proposal-lab">Result</div>${wagerLineResultsHTML(w)}${wagerNetsHTML(w)}</div>`;
+  } else {
+    const res = w.isPush ? '🤝 Push — bets off, nobody collected.' : `🏆 <b>${esc(wagerWinnerName(w))}</b> won the wager.`;
+    body = `<div class="wg-result" style="font-size:15px">${res}</div>`;
+  }
+  return mwShell(w, `Proposed by ${esc(nameOf(w.by))}`, body, '');
 }
 function renderMyWagers(){
   const body=$("#myWagersBody"); if(!body) return;
@@ -2119,18 +2223,48 @@ function openOutcomeModal(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   if(!iAmParty(w)){ toast("Only members in the wager can settle it"); return; }
   outcomeWager = id;
-  const sel = $("#oc_winner");
-  sel.innerHTML = w.parties.map(p=>`<option value="${p.pid}">${esc(nameOf(p.pid))}</option>`).join('')
-    + `<option value="__push">Push — nobody wins, bets off</option>`;
+  const lines = linesOf(w);
+  const pre = lineOutcomesFor(w);   // pre-fill if an outcome was already proposed
+  const box = $("#oc_lines");
+  box.innerHTML = lines.map((l,i)=>{
+    const cur = pre && pre[i] ? pre[i] : null;
+    const choices = w.parties.map(p=>{
+      const m = MEMBERS.find(x=>x.id===p.pid);
+      const on = cur && cur.winner===p.pid ? ' checked' : '';
+      return `<label class="oc-choice"><input type="radio" name="ocw_${i}" value="${p.pid}"${on} onchange="updateOutcomePreview()">${avatarHTML(m,22)}<span>${esc(nameOf(p.pid))}</span></label>`;
+    }).join('');
+    const pushOn = cur && cur.push ? ' checked' : '';
+    return `<div class="oc-line">
+      <div class="oc-line-head"><span class="wg-line-num">${i+1}.</span>${esc(l.desc||('Bet '+(i+1)))}<span class="oc-line-amt">${money(l.amount)}</span></div>
+      <div class="oc-choices">${choices}<label class="oc-choice oc-push"><input type="radio" name="ocw_${i}" value="__push"${pushOn} onchange="updateOutcomePreview()"><span>🤝 Push</span></label></div>
+    </div>`;
+  }).join('');
+  updateOutcomePreview();
   openModal('outcomeScrim');
+}
+/* read the current radio selections into a per-line outcomes array (null if incomplete) */
+function readOutcomeSelections(w){
+  const lines = linesOf(w); const outs=[];
+  for(let i=0;i<lines.length;i++){
+    const el = document.querySelector(`input[name="ocw_${i}"]:checked`);
+    if(!el) return null;
+    outs.push(el.value==='__push' ? { push:true } : { winner:el.value });
+  }
+  return outs;
+}
+function updateOutcomePreview(){
+  const w = WAGERS.find(x=>x.id===outcomeWager); const el=$("#oc_preview"); if(!w||!el) return;
+  const outs = readOutcomeSelections(w);
+  if(!outs){ el.innerHTML = `<span class="oc-preview-hint">Pick a winner (or push) for each line to see the split.</span>`; return; }
+  el.innerHTML = `<div class="oc-preview-lab">Net profit &amp; loss</div>` + wagerNetsHTML({ parties:w.parties, lines:linesOf(w), lineOutcomes:outs });
 }
 async function submitOutcome(){
   const id = outcomeWager; const w = WAGERS.find(x=>x.id===id); if(!w) return;
-  const v = $("#oc_winner").value;
   const mine = wagerParty(w, MYID); if(!mine) return;
-  const patch = v==='__push' ? { is_push:true, proposed_winner_id:null } : { is_push:false, proposed_winner_id:v };
+  const outs = readOutcomeSelections(w);
+  if(!outs){ toast("Pick a winner or push for each line"); return; }
   try{
-    let { error }=await sb.from('wagers').update(patch).eq('id', id); if(error) throw error;
+    let { error }=await sb.from('wagers').update({ line_outcomes:outs, is_push:false, proposed_winner_id:null }).eq('id', id); if(error) throw error;
     ({ error }=await sb.from('wager_parties').update({ outcome_ok:false }).eq('wager_id', id)); if(error) throw error;
     ({ error }=await sb.from('wager_parties').update({ outcome_ok:true }).eq('id', mine.id)); if(error) throw error;
   }catch(e){ toast(friendly(e)); return; }
@@ -2143,7 +2277,12 @@ async function confirmOutcome(id){ if(gateBlock())return;
     let { error }=await sb.from('wager_parties').update({ outcome_ok:true }).eq('id', mine.id); if(error) throw error;
     const everyoneElse = w.parties.filter(p=>p.pid!==MYID);
     if(everyoneElse.every(p=>p.outcomeOk)){
-      const fin = w.isPush ? { status:'completed', winner_id:null } : { status:'completed', winner_id:w.proposedWinner };
+      // finalise: keep the per-line outcomes and stash a summary winner/push for
+      // legacy display helpers (net leader across all lines; push if nobody's ahead)
+      const nets = wagerNets(w);
+      const ranked = Object.keys(nets).map(pid=>({ pid, n:Math.round((nets[pid]||0)*100)/100 })).sort((a,b)=>b.n-a.n);
+      const allPush = !ranked.length || ranked.every(x=>x.n===0);
+      const fin = { status:'completed', is_push:allPush, winner_id: allPush ? null : ranked[0].pid };
       ({ error }=await sb.from('wagers').update(fin).eq('id', id)); if(error) throw error;
     }
   }catch(e){ toast(friendly(e)); return; }
@@ -2153,7 +2292,7 @@ async function disputeOutcome(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   if(!iAmParty(w)) return;
   try{
-    let { error }=await sb.from('wagers').update({ proposed_winner_id:null, is_push:false }).eq('id', id); if(error) throw error;
+    let { error }=await sb.from('wagers').update({ proposed_winner_id:null, is_push:false, line_outcomes:null }).eq('id', id); if(error) throw error;
     ({ error }=await sb.from('wager_parties').update({ outcome_ok:false }).eq('wager_id', id)); if(error) throw error;
   }catch(e){ toast(friendly(e)); return; }
   await reload(); toast("Outcome cleared — propose again");
@@ -2224,13 +2363,13 @@ function wagerCard(w){
     else if(mine && mine.accepted){ actions += `<span class="wg-note">Waiting on the others…</span>`; }
     if(me && w.by===me.id){ actions += `<button class="btn ghost tiny" onclick="cancelWager('${w.id}')">Cancel</button>`; }
   } else if(w.status==='accepted'){
-    const proposed = w.isPush || w.proposedWinner;
+    const proposed = outcomeProposed(w);
     body = wagerPartyChips(w, proposed ? 'outcome' : 'accept');
     if(proposed){
-      const who = w.isPush ? 'a push (no winner)' : `${esc(nameOf(w.proposedWinner))} won`;
-      body += `<div class="wg-proposal">Proposed outcome: <b>${who}</b></div>`;
+      body += `<div class="wg-proposal"><div class="wg-proposal-lab">Proposed outcome</div>${wagerLineResultsHTML(w)}${wagerNetsHTML(w)}</div>`;
       if(mine && !mine.outcomeOk){
         actions += `<button class="btn tiny" onclick="confirmOutcome('${w.id}')">Confirm</button>`;
+        actions += `<button class="btn ghost tiny" onclick="openOutcomeModal('${w.id}')">Change</button>`;
         actions += `<button class="btn ghost tiny" onclick="disputeOutcome('${w.id}')">Dispute</button>`;
       } else if(mine){ actions += `<span class="wg-note">Waiting on the others to confirm…</span>`; }
     } else if(mine){
@@ -2238,6 +2377,8 @@ function wagerCard(w){
     }
   } else if(w.status==='declined'){
     body = `<div class="wg-result">🚫 Called off — wager denied.</div>`;
+  } else if(lineOutcomesFor(w)){
+    body = `<div class="wg-settled"><div class="wg-proposal-lab">Result</div>${wagerLineResultsHTML(w)}${wagerNetsHTML(w)}</div>`;
   } else {
     body = `<div class="wg-result">${w.isPush?'🤝 Push — bets off, nobody collects.':`🏆 <b>${esc(wagerWinnerName(w))}</b> won the wager.`}</div>`;
   }
