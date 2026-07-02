@@ -4251,7 +4251,7 @@ let pbHeld = null;   // a "picked up" player id — powers tap-to-place on touch
 
 function pbInitDefaults(){ if(!PB.trip) PB.trip = GALLERY_TRIPS[GALLERY_TRIPS.length-1] || ''; }
 function pbPlaced(){ const s=new Set(); PB.sections.forEach(sec=>{ sec.a.ids.forEach(id=>s.add(id)); sec.b.ids.forEach(id=>s.add(id)); }); return s; }
-function pbPool(){ const placed=pbPlaced(); return MEMBERS.filter(m=>!placed.has(m.id)).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))); }
+function pbPool(){ const placed=pbPlaced(); return MEMBERS.filter(m=> m.role!=='patron' && !placed.has(m.id)).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))); }
 function pbMove(pid, zone){
   if(!pid) return;
   // a player only plays one tee time, so lift them out of every team first
