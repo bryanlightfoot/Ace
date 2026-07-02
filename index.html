@@ -207,9 +207,6 @@
     background:var(--paper);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
   .dest h3{display:flex;justify-content:space-between;align-items:baseline;gap:10px;color:var(--brass-deep);font-size:22px}
   .dest .region{font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fairway);font-weight:600}
-  .dest .cost{align-self:flex-start;font-family:"Spline Sans Mono",monospace;font-weight:700;color:#2a200a;font-size:15px;
-    background:rgba(196,154,74,.22);border:1px solid var(--brass);border-radius:999px;padding:3px 12px}
-  .dest .cost small{color:var(--brass-deep);font-weight:500;font-size:12px}
   .dest .note{font-size:14px;color:var(--ink);line-height:1.5;margin-top:2px}
   .dest .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
 
@@ -432,6 +429,18 @@
     text-decoration:underline;cursor:pointer;padding:0}
   .wg-terms{font-size:15px;color:var(--ink);line-height:1.4;white-space:pre-wrap}
   .wg-by{font-size:12px;color:var(--ink-soft)}
+  .wg-amount-lab{font-family:"Spline Sans Mono",monospace;font-weight:500;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--brass-deep);margin-left:6px;vertical-align:middle}
+  .wg-lines{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .wg-line{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:14px;color:var(--ink);
+    border-bottom:1px dashed var(--rule);padding-bottom:6px}
+  .wg-line:last-child{border-bottom:0;padding-bottom:0}
+  .wg-line-d{line-height:1.35}
+  .wg-line-num{font-family:"Spline Sans Mono",monospace;font-size:11px;color:var(--ink-soft);margin-right:6px}
+  .wg-line-a{font-family:"Spline Sans Mono",monospace;font-weight:700;color:var(--brass-deep);white-space:nowrap}
+  .wg-betrow{display:flex;gap:8px;margin-bottom:8px}
+  .wg-betrow input[type=number]{flex:0 0 92px}
+  .wg-betrow input:not([type=number]){flex:1;min-width:0}
+  .wg-total-preview{font-family:"Spline Sans Mono",monospace;font-size:13px;color:var(--brass-deep);font-weight:700;margin:2px 0 6px;min-height:17px}
   .wg-parties{display:flex;flex-wrap:wrap;gap:7px}
   .wg-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);border-radius:999px;
     padding:3px 10px 3px 3px;font-size:12px;background:#fff}
@@ -830,7 +839,6 @@
       <div class="field"><label class="f">Name</label><input id="d_name" placeholder="Pinehurst No. 2"></div>
       <div class="field"><label class="f">Region</label><input id="d_region" placeholder="North Carolina, USA"></div>
     </div>
-    <div class="field"><label class="f">Cost / day (per person, est.)</label><input id="d_cost" type="number" placeholder="300"></div>
     <div class="field"><label class="f">Notes</label><textarea id="d_notes" placeholder="Courses, lodging, travel time, why it'd be class…"></textarea></div>
     <label class="wg-check" style="margin-top:4px"><input type="checkbox" id="d_current"><span>This is the current / upcoming trip (shows in the Current section with Key Info)</span></label>
     <div class="modal-foot">
@@ -1039,8 +1047,12 @@
     <p class="sub">Pick who you're betting against, set the amount and spell out the terms. Everyone has to accept before it goes live.</p>
     <label class="f">Who's in on this bet?</label>
     <div id="wg_members" class="wg-checks"></div>
-    <div class="field" style="margin-top:14px"><label class="f">Amount ($)</label><input id="wg_amount" type="number" min="1" placeholder="20"></div>
-    <div class="field"><label class="f">Terms of the bet</label><textarea id="wg_terms" placeholder="e.g. First to three-putt buys the round. Or: I'll break 90 at Tetherow."></textarea></div>
+    <label class="f" style="margin-top:14px">The bet(s)</label>
+    <p class="sub" style="margin-top:2px">Add up to three lines — for example front 9, back 9 and overall 18. Only the first line needs an amount.</p>
+    <div class="wg-betrow"><input id="wg_amt1" type="number" min="0" step="1" placeholder="$" oninput="updateWagerTotal('wg')"><input id="wg_desc1" placeholder="Line 1 — e.g. Front 9 low score"></div>
+    <div class="wg-betrow"><input id="wg_amt2" type="number" min="0" step="1" placeholder="$" oninput="updateWagerTotal('wg')"><input id="wg_desc2" placeholder="Line 2 (optional) — e.g. Back 9"></div>
+    <div class="wg-betrow"><input id="wg_amt3" type="number" min="0" step="1" placeholder="$" oninput="updateWagerTotal('wg')"><input id="wg_desc3" placeholder="Line 3 (optional) — e.g. Overall 18"></div>
+    <div class="wg-total-preview" id="wg_total"></div>
     <div class="field"><label class="f">Course <span style="color:var(--ink-soft);font-weight:400">(optional)</span></label><select id="wg_course"></select></div>
     <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
       <button class="btn ghost" onclick="closeModal('wagerScrim')">Cancel</button>
@@ -1114,8 +1126,12 @@
   <div class="modal">
     <h3>Counter the wager</h3>
     <p class="sub">Propose different terms back. Everyone's acceptance resets and the other members re-confirm the new deal.</p>
-    <div class="field"><label class="f">Amount ($)</label><input id="ct_amount" type="number" min="1"></div>
-    <div class="field"><label class="f">New terms</label><textarea id="ct_terms"></textarea></div>
+    <label class="f">The bet(s)</label>
+    <p class="sub" style="margin-top:2px">Up to three lines. Only the first needs an amount.</p>
+    <div class="wg-betrow"><input id="ct_amt1" type="number" min="0" step="1" placeholder="$" oninput="updateWagerTotal('ct')"><input id="ct_desc1" placeholder="Line 1"></div>
+    <div class="wg-betrow"><input id="ct_amt2" type="number" min="0" step="1" placeholder="$" oninput="updateWagerTotal('ct')"><input id="ct_desc2" placeholder="Line 2 (optional)"></div>
+    <div class="wg-betrow"><input id="ct_amt3" type="number" min="0" step="1" placeholder="$" oninput="updateWagerTotal('ct')"><input id="ct_desc3" placeholder="Line 3 (optional)"></div>
+    <div class="wg-total-preview" id="ct_total"></div>
     <div class="modal-foot"><div style="margin-left:auto;display:flex;gap:10px">
       <button class="btn ghost" onclick="closeModal('counterScrim')">Cancel</button>
       <button class="btn" onclick="saveCounter()">Send counter</button>
@@ -1310,7 +1326,7 @@ async function loadAll(){
     results: resByTrip[t.id]||[], aces: aceByTrip[t.id]||[]
   }));
 
-  DESTS = (ds.data||[]).map(d=>({ id:d.id, name:d.name, region:d.region, costPerDay:d.cost_per_day, notes:d.notes, isCurrent:!!d.is_current }));
+  DESTS = (ds.data||[]).map(d=>({ id:d.id, name:d.name, region:d.region, notes:d.notes, isCurrent:!!d.is_current }));
   COURSES = (cs.data||[]).map(c=>({
     id:c.id, destId:c.destination_id, name:c.name, date:c.play_date||null,
     teeTimes: Array.isArray(c.tee_times) ? c.tee_times : [],
@@ -1353,12 +1369,20 @@ async function loadAll(){
 
   const partyByWager = {};
   (wp.data||[]).forEach(p=>{ (partyByWager[p.wager_id]=partyByWager[p.wager_id]||[]).push({ id:p.id, pid:p.profile_id, accepted:!!p.accepted, outcomeOk:!!p.outcome_ok }); });
-  WAGERS = (wg.data||[]).map(w=>({
-    id:w.id, by:w.created_by, amount:w.amount, terms:w.terms, status:w.status||'unaccepted',
-    proposedWinner:w.proposed_winner_id, winnerId:w.winner_id, isPush:!!w.is_push, counterBy:w.counter_by||null,
-    course:w.course||'',
-    parties: partyByWager[w.id]||[]
-  }));
+  WAGERS = (wg.data||[]).map(w=>{
+    let lines = [];
+    if(w.lines){ try{ lines = (typeof w.lines==='string') ? JSON.parse(w.lines) : w.lines; }catch(e){ lines = []; } }
+    if(!Array.isArray(lines)) lines = [];
+    lines = lines.filter(l=>l && Number(l.amount)>0).map(l=>({ amount:Number(l.amount), desc:(l.desc||'').toString() }));
+    if(!lines.length){ const amt=Number(w.amount); if(!isNaN(amt)&&amt>0) lines=[{ amount:amt, desc:(w.terms||'').toString() }]; }
+    const total = lines.reduce((s,l)=>s+l.amount,0) || (Number(w.amount)||0);
+    return {
+      id:w.id, by:w.created_by, amount:w.amount, total, lines, terms:w.terms, status:w.status||'unaccepted',
+      proposedWinner:w.proposed_winner_id, winnerId:w.winner_id, isPush:!!w.is_push, counterBy:w.counter_by||null,
+      course:w.course||'',
+      parties: partyByWager[w.id]||[]
+    };
+  });
 
   // wager reactions (value: 1 = like, -1 = dislike) + comments
   WLIKES = {}; WDISLIKES = {}; WMYREACT = {};
@@ -1856,7 +1880,7 @@ function wagerStandings(){
   const ensure = id => (byId[id] = byId[id] || { id, net:0, won:0, lost:0, count:0 });
   WAGERS.forEach(w=>{
     if(w.status!=='completed' || w.isPush || !w.winnerId) return;
-    const amount = Number(w.amount); if(isNaN(amount) || amount<=0) return;
+    const amount = Number(w.total!=null?w.total:w.amount); if(isNaN(amount) || amount<=0) return;
     const losers = w.parties.filter(p=>p.pid && p.pid!==w.winnerId).map(p=>p.pid);
     if(!losers.length) return;
     const share = amount/losers.length;
@@ -1871,11 +1895,46 @@ function wagerStandings(){
   return { ranked, byId };
 }
 
+/* ---- multi-line wager helpers (shared by propose + counter) ---- */
+function readBetRows(pre){
+  const lines=[];
+  for(let i=1;i<=3;i++){
+    const ae=$('#'+pre+'_amt'+i), de=$('#'+pre+'_desc'+i);
+    const a=ae?Number(ae.value):NaN;
+    const d=de?(de.value||'').trim():'';
+    if(!isNaN(a)&&a>0) lines.push({ amount:a, desc:d });
+  }
+  return lines;
+}
+function updateWagerTotal(pre){
+  let t=0; for(let i=1;i<=3;i++){ const ae=$('#'+pre+'_amt'+i); const v=ae?Number(ae.value):NaN; if(!isNaN(v)&&v>0) t+=v; }
+  const el=$('#'+pre+'_total'); if(el) el.textContent = t>0 ? ('Total potential wager: '+money(t)) : '';
+}
+function betTermsFrom(lines){
+  const descs=lines.map(l=>l.desc).filter(Boolean);
+  return descs.join(' · ') || (lines.length>1?`${lines.length} bets`:'Wager');
+}
+/* itemised lines + (for multi-line) shown alongside the total up top */
+function wagerLinesHTML(w){
+  const lines = (w.lines && w.lines.length) ? w.lines : [{amount:w.amount, desc:w.terms}];
+  if(lines.length<=1){
+    const d = (lines[0] && lines[0].desc) ? lines[0].desc : (w.terms||'');
+    return d ? `<div class="wg-terms">${esc(d)}</div>` : '';
+  }
+  return `<div class="wg-lines">`+lines.map((l,i)=>
+    `<div class="wg-line"><span class="wg-line-d"><span class="wg-line-num">${i+1}.</span>${esc(l.desc||('Bet '+(i+1)))}</span><span class="wg-line-a">${money(l.amount)}</span></div>`
+  ).join('')+`</div>`;
+}
+function wagerAmountHTML(w, size){
+  const multi = w.lines && w.lines.length>1;
+  const st = size?` style="font-size:${size}px"`:'';
+  return `<div class="wg-amount"${st}>${money(w.total!=null?w.total:w.amount)}${multi?`<span class="wg-amount-lab">total</span>`:''}</div>`;
+}
 /* ---- create wager ---- */
 function openWagerModal(){ if(gateBlock())return;
   if(!isAuthed()){ openAuth('signin'); return; }
-  $("#wg_amount").value = '';
-  $("#wg_terms").value = '';
+  for(let i=1;i<=3;i++){ const a=$('#wg_amt'+i), d=$('#wg_desc'+i); if(a)a.value=''; if(d)d.value=''; }
+  updateWagerTotal('wg');
   const others = MEMBERS.filter(m=>m.id!==MYID);
   const box = $("#wg_members");
   box.innerHTML = others.length
@@ -1896,13 +1955,13 @@ async function saveWager(){ if(gateBlock())return;
   if(!isAuthed()){ openAuth('signin'); return; }
   const picks = [...document.querySelectorAll('#wg_members input:checked')].map(i=>i.value);
   if(!picks.length){ toast("Pick at least one member to wager against"); return; }
-  const amount = intOrNull($("#wg_amount").value);
-  if(amount==null || isNaN(amount) || amount<=0){ toast("Enter a dollar amount"); return; }
-  const terms = $("#wg_terms").value.trim();
-  if(!terms){ toast("Spell out the terms of the bet"); return; }
+  const lines = readBetRows('wg');
+  if(!lines.length){ toast("Enter at least one bet amount"); return; }
+  const total = lines.reduce((s,l)=>s+l.amount,0);
+  const terms = betTermsFrom(lines);
   const course = ($("#wg_course") ? $("#wg_course").value : '').trim() || null;
   try{
-    const { data, error }=await sb.from('wagers').insert({ created_by:MYID, amount, terms, status:'unaccepted', course }).select('id').single();
+    const { data, error }=await sb.from('wagers').insert({ created_by:MYID, amount:total, terms, lines, status:'unaccepted', course }).select('id').single();
     if(error) throw error;
     const wid = data.id;
     const rows = [{ wager_id:wid, profile_id:MYID, accepted:true }]
@@ -1953,19 +2012,21 @@ function openCounterModal(id){ if(gateBlock())return;
   const w = WAGERS.find(x=>x.id===id); if(!w) return;
   if(!wagerParty(w, MYID)){ toast("You're not part of this wager"); return; }
   counterWager=id;
-  $("#ct_amount").value = (w.amount!=null?w.amount:'');
-  $("#ct_terms").value = w.terms||'';
+  const L = (w.lines && w.lines.length) ? w.lines : [{amount:w.amount, desc:w.terms}];
+  for(let i=1;i<=3;i++){ const l=L[i-1]; const a=$('#ct_amt'+i), d=$('#ct_desc'+i);
+    if(a) a.value = l ? l.amount : ''; if(d) d.value = l ? (l.desc||'') : ''; }
+  updateWagerTotal('ct');
   openModal('counterScrim');
 }
 async function saveCounter(){
   const id=counterWager; const w=WAGERS.find(x=>x.id===id); if(!w) return;
   const mine = wagerParty(w, MYID); if(!mine) return;
-  const amount=intOrNull($("#ct_amount").value);
-  if(amount==null||isNaN(amount)||amount<=0){ toast("Enter a dollar amount"); return; }
-  const terms=$("#ct_terms").value.trim();
-  if(!terms){ toast("Spell out the new terms"); return; }
+  const lines = readBetRows('ct');
+  if(!lines.length){ toast("Enter at least one bet amount"); return; }
+  const total = lines.reduce((s,l)=>s+l.amount,0);
+  const terms = betTermsFrom(lines);
   try{
-    let { error }=await sb.from('wagers').update({ amount, terms, status:'unaccepted', counter_by:MYID, proposed_winner_id:null, is_push:false }).eq('id', id); if(error) throw error;
+    let { error }=await sb.from('wagers').update({ amount:total, terms, lines, status:'unaccepted', counter_by:MYID, proposed_winner_id:null, is_push:false }).eq('id', id); if(error) throw error;
     ({ error }=await sb.from('wager_parties').update({ accepted:false, outcome_ok:false }).eq('wager_id', id)); if(error) throw error;
     ({ error }=await sb.from('wager_parties').update({ accepted:true }).eq('id', mine.id)); if(error) throw error;
   }catch(e){ toast(friendly(e)); return; }
@@ -1986,9 +2047,9 @@ function openMyWagers(){ if(!isAuthed()){ openAuth('signin'); return; } renderMy
 function mwShell(w, head, body, actions){
   const statusLabel = { unaccepted:'Unaccepted', accepted:'Accepted', completed:'Completed', declined:'Declined' }[w.status]||w.status;
   return `<div class="mw-card s-${w.status}">
-    <div class="wg-top"><div class="wg-amount" style="font-size:24px">${money(w.amount)}</div>
+    <div class="wg-top">${wagerAmountHTML(w, 22)}
       <span class="wg-badge b-${w.status}">${statusLabel}</span></div>
-    <div class="wg-terms" style="font-size:14px">${esc(w.terms)}</div>
+    ${wagerLinesHTML(w)}
     <div class="wg-by">${head}</div>
     ${body}
     ${actions?`<div class="wg-actions">${actions}</div>`:''}
@@ -2039,7 +2100,7 @@ function renderMyWagers(){
   const active = mineAll.filter(w=>w.status==='accepted');
   const hist   = mineAll.filter(w=>w.status==='completed'||w.status==='declined');
   // running stake across everything not yet settled (proposed + accepted)
-  const pendingTotal = pend.concat(active).reduce((s,w)=> s + (Number(w.amount)||0), 0);
+  const pendingTotal = pend.concat(active).reduce((s,w)=> s + (Number(w.total!=null?w.total:w.amount)||0), 0);
   const pendingBar = (pend.length+active.length)
     ? `<div class="mw-pending"><div><span class="l">Pending</span><span class="sub">on the line, not yet settled</span></div><span class="v">${money(pendingTotal)}</span></div>`
     : '';
@@ -2186,10 +2247,10 @@ function wagerCard(w){
     : `Proposed by ${esc(nameOf(w.by))}`;
   return `<div class="wg-card s-${w.status}">
     <div class="wg-top">
-      <div class="wg-amount">${money(w.amount)}</div>
+      ${wagerAmountHTML(w)}
       <span class="wg-badge b-${w.status}">${statusLabel}</span>
     </div>
-    <div class="wg-terms">${esc(w.terms)}</div>
+    ${wagerLinesHTML(w)}
     ${w.course?`<div class="wg-course" style="font-family:'Spline Sans Mono',monospace;font-size:12px;color:var(--brass-deep);margin-top:4px">⛳ ${esc(w.course)}</div>`:''}
     <div class="wg-by">${byLine}</div>
     ${body}
@@ -2306,7 +2367,6 @@ function historicCard(d){
     <div class="dest">
       <h3 class="disp">${esc(d.name)}</h3>
       <div class="region">${esc(d.region||"")}</div>
-      <div class="cost">${money(d.costPerDay)}<small> / day</small></div>
       ${d.notes?`<div class="note">${esc(d.notes)}</div>`:""}
       ${destSocial(d)}
     </div>`;
@@ -2331,7 +2391,6 @@ function currentCard(d){
     <div class="cur-badge">Current trip</div>
     <h3 class="disp">${esc(d.name)}</h3>
     <div class="region">${esc(d.region||"")}</div>
-    <div class="cost">${money(d.costPerDay)}<small> / day</small></div>
     ${d.notes?`<div class="note">${esc(d.notes)}</div>`:""}
 
     <div class="keyinfo">
@@ -2351,7 +2410,7 @@ function renderDests(){
   const curEl = $("#destCurrent"), histEl = $("#destHistoric");
   if(!curEl || !histEl) return;
   if(!DESTS.length){
-    curEl.innerHTML = `<div class="empty"><h3>No destinations yet</h3><p>Add the places we've played and what they cost per day. Members can then like and comment on each one.</p><div class="row"><button class="btn admin-only" onclick="openDestModal()">Add a destination</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`;
+    curEl.innerHTML = `<div class="empty"><h3>No destinations yet</h3><p>Add the places we've played. Members can then like and comment on each one.</p><div class="row"><button class="btn admin-only" onclick="openDestModal()">Add a destination</button><button class="btn ghost admin-only" onclick="loadSample()">Load sample data</button></div></div>`;
     histEl.innerHTML = '';
     return;
   }
@@ -3027,7 +3086,7 @@ function openDestModal(id){
   $("#destTitle").textContent=d?"Edit destination":"Add a destination";
   $("#d_delete").style.display=d?"inline-block":"none";
   $("#d_name").value=d?.name||""; $("#d_region").value=d?.region||"";
-  $("#d_cost").value=d?.costPerDay??""; $("#d_notes").value=d?.notes||"";
+  $("#d_notes").value=d?.notes||"";
   const cb=$("#d_current"); if(cb) cb.checked = !!d?.isCurrent;
   openModal("destScrim");
 }
@@ -3037,7 +3096,7 @@ async function saveDest(){
   if(!name){ toast("Give it a name"); return; }
   const makeCurrent = !!$("#d_current")?.checked;
   const row={ name, region:$("#d_region").value.trim(),
-    cost_per_day:$("#d_cost").value.trim()===""?null:Number($("#d_cost").value), notes:$("#d_notes").value.trim(),
+    notes:$("#d_notes").value.trim(),
     is_current: makeCurrent };
   try{
     // only one destination can be the current trip
@@ -3128,10 +3187,10 @@ async function loadSample(){
   if(!isAdmin()){ toast("Admins only"); return; }
   try{
     const dRows=[
-      { name:"Pebble Beach", region:"California, USA", cost_per_day:520, notes:"Bucket-list. Pricey, but the 7th and 18th are worth it." },
-      { name:"Royal County Down", region:"Northern Ireland", cost_per_day:240, notes:"Ranked among the best in the world. Mournes backdrop." },
-      { name:"Cabot Cliffs", region:"Nova Scotia, Canada", cost_per_day:300, notes:"Clifftop links, easy to combine with Cabot Links next door." },
-      { name:"Kiawah Island", region:"South Carolina, USA", cost_per_day:285, notes:"The Ocean Course — beatable in good weather, brutal in wind." },
+      { name:"Pebble Beach", region:"California, USA", notes:"Bucket-list. Pricey, but the 7th and 18th are worth it." },
+      { name:"Royal County Down", region:"Northern Ireland", notes:"Ranked among the best in the world. Mournes backdrop." },
+      { name:"Cabot Cliffs", region:"Nova Scotia, Canada", notes:"Clifftop links, easy to combine with Cabot Links next door." },
+      { name:"Kiawah Island", region:"South Carolina, USA", notes:"The Ocean Course — beatable in good weather, brutal in wind." },
     ].map(d=>({...d, created_by:MYID}));
     const { data:dIns, error:dErr }=await sb.from('destinations').insert(dRows).select('id'); if(dErr) throw dErr;
 
