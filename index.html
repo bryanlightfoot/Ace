@@ -644,21 +644,34 @@
     background:rgba(196,154,74,.08);cursor:pointer}
   .sugbox-row:hover{background:rgba(196,154,74,.16)}
   .sugbox-row .vtally{color:var(--brass-deep);font-size:20px;line-height:1}
-  .suglist{display:flex;flex-direction:column;gap:10px;margin-top:6px}
-  .sugrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--rule);
-    border-radius:10px;background:var(--paper)}
+  .suglist{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .sugrow{position:relative;display:flex;align-items:center;gap:13px;padding:12px 12px 12px 18px;
+    border:1px solid var(--rule);border-radius:12px;overflow:hidden;
+    background:linear-gradient(180deg,var(--paper),var(--paper-2));
+    box-shadow:0 1px 0 rgba(0,0,0,.03);transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+  .sugrow::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rule)}
+  .sugrow:hover{transform:translateY(-1px);box-shadow:0 10px 22px -16px rgba(0,0,0,.55)}
   .sugrow.mine{border-color:var(--fairway)}
-  .sugrank{font-family:"Bodoni Moda",serif;font-size:18px;font-weight:700;color:var(--brass-deep);min-width:22px;text-align:center}
-  .sugloc{flex:1;min-width:0}
-  .sugloc .n{font-weight:600;color:var(--ink)}
-  .sugloc .m{font-size:11px;color:var(--ink-soft);font-family:"Spline Sans Mono",monospace;margin-top:2px}
-  .sugvote{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);border-radius:999px;
-    padding:6px 12px;background:var(--paper);color:var(--ink);cursor:pointer;font-weight:700;white-space:nowrap}
-  .sugvote:hover{border-color:var(--brass)}
-  .sugvote.on{background:rgba(76,138,90,.12);border-color:var(--fairway);color:var(--fairway)}
-  .sugvote .cnt{font-family:"Spline Sans Mono",monospace}
-  .sugrm{border:0;background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
-  .sugrm:hover{color:var(--flag)}
+  .sugrow.mine::before{background:var(--fairway)}
+  .sugrow.top::before{background:var(--brass)}
+  .sugrank{display:flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;
+    border-radius:50%;font-family:"Bodoni Moda",serif;font-weight:700;font-size:15px;line-height:1;
+    color:var(--brass-deep);background:rgba(196,154,74,.14);border:1px solid rgba(196,154,74,.32)}
+  .sugrow.top .sugrank{color:#2a200a;background:var(--brass);border-color:var(--brass-deep)}
+  .sugloc{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .sugloc .n{font-family:"Bodoni Moda",serif;font-weight:700;font-size:17px;color:var(--ink);line-height:1.2;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sugloc .m{font-size:11px;color:var(--ink-soft);font-family:"Spline Sans Mono",monospace;letter-spacing:.02em}
+  .sugvote{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--rule);border-radius:999px;
+    padding:6px 8px 6px 13px;background:var(--paper);color:var(--ink);cursor:pointer;font-weight:700;font-size:13px;
+    white-space:nowrap;transition:background .12s ease,border-color .12s ease,color .12s ease}
+  .sugvote:hover{border-color:var(--brass);background:rgba(196,154,74,.10)}
+  .sugvote.on{background:rgba(76,138,90,.14);border-color:var(--fairway);color:var(--fairway)}
+  .sugvote .cnt{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:23px;padding:0 6px;
+    border-radius:999px;background:rgba(46,74,56,.10);font-family:"Spline Sans Mono",monospace;font-weight:700;font-size:12px;color:var(--ink)}
+  .sugvote.on .cnt{background:rgba(76,138,90,.22);color:var(--fairway)}
+  .sugrm{border:0;background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;cursor:pointer;padding:0 2px;opacity:.55;transition:opacity .12s,color .12s}
+  .sugrm:hover{color:var(--flag);opacity:1}
   .vo-noimg{padding:26px;text-align:center;color:var(--ink-soft);font-size:13px}
   .prevbreak{font-size:12px;color:var(--ink-soft);margin:0 0 4px 46px}
 
@@ -2714,14 +2727,15 @@ function renderSuggest(){
   if(suggestMode==='list'){
     const rows = SUGGESTIONS.length ? SUGGESTIONS.map((s,i)=>{
       const canRm = isAdmin() || (isAuthed() && s.by===MYID);
-      return `<div class="sugrow${s.mine?' mine':''}">
+      const top = (i===0 && s.votes>0) ? ' top' : '';
+      return `<div class="sugrow${s.mine?' mine':''}${top}">
         <span class="sugrank">${i+1}</span>
         <span class="sugloc"><span class="n">${esc(s.location)}</span><span class="m">by ${esc(nameOf(s.by))}</span></span>
         <button class="sugvote${s.mine?' on':''}" onclick="voteSuggestion('${s.id}')" title="${s.mine?'Remove your vote':'Vote for this'}">${s.mine?'&#10003; Voted':'&#9650; Vote'} <span class="cnt">${s.votes}</span></button>
         ${canRm?`<button class="sugrm" title="Delete" onclick="deleteSuggestion('${s.id}')">&times;</button>`:''}
       </div>`;
     }).join("") : `<p class="secnote" style="margin-top:10px">No suggestions yet — be the first to add one.</p>`;
-    el.innerHTML = `<p class="sub">Most popular ideas rise to the top. ${isAuthed()&&!isPatron()?'Vote for as many as you like.':''}</p>
+    el.innerHTML = `<p class="sub">Most popular ideas rise to the top. ${isAuthed()&&!isPatron()?'You get one vote — pick your favourite.':''}</p>
       <div class="suglist">${rows}</div>
       <div class="modal-foot" style="margin-top:16px">
         <button class="linklike" onclick="suggestSetMode('menu')">&lsaquo; Back</button>
@@ -2768,8 +2782,17 @@ async function voteSuggestion(id){
   if(patronBlock("vote on trips")) return;
   const s = SUGGESTIONS.find(x=>x.id===id); const mine = s && s.mine;
   let res;
-  if(mine) res = await sb.from('suggestion_votes').delete().eq('suggestion_id',id).eq('profile_id',MYID);
-  else     res = await sb.from('suggestion_votes').upsert({ suggestion_id:id, profile_id:MYID }, { onConflict:'suggestion_id,profile_id' });
+  if(mine){
+    // toggle your vote off
+    res = await sb.from('suggestion_votes').delete().eq('suggestion_id',id).eq('profile_id',MYID);
+  } else {
+    // one vote per member across the whole box — clear any existing vote first, then move it here
+    const hadVote = SUGGESTIONS.some(x=>x.mine);
+    const clr = await sb.from('suggestion_votes').delete().eq('profile_id',MYID);
+    if(clr.error){ toast(friendly(clr.error)); return; }
+    res = await sb.from('suggestion_votes').upsert({ suggestion_id:id, profile_id:MYID }, { onConflict:'suggestion_id,profile_id' });
+    if(!res.error && hadVote) toast("Vote moved — one vote each");
+  }
   if(res.error){ toast(friendly(res.error)); return; }
   await reload();
   renderSuggest();
