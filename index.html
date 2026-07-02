@@ -44,7 +44,7 @@
     line-height:1.5;
   }
   .mono{font-family:"Spline Sans Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
-  .disp{font-family:"Bodoni Moda",Georgia,serif}
+  .disp{font-family:"Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em}
 
   a{color:inherit}
   button{font-family:inherit;cursor:pointer}
@@ -107,8 +107,10 @@
     font-size:11px;letter-spacing:.22em;text-transform:uppercase;
     color:var(--brass-deep);font-weight:700;margin:0 0 10px;
   }
-  h2.disp{font-size:30px;font-weight:700;margin:0;color:var(--ink);letter-spacing:.2px}
+  h2.disp{font-size:30px;font-weight:700;margin:0;color:var(--ink);letter-spacing:-.01em}
   h3.disp{font-size:21px;font-weight:700;margin:0;color:var(--ink)}
+  /* universal subtext — matches the champion-plate "To Be Won" sub across all tabs & dropdowns */
+  .sub{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--ink-soft);margin:4px 0 0}
 
   .grid{display:grid;gap:16px}
   .g2{grid-template-columns:1.4fr 1fr}
@@ -231,14 +233,14 @@
 
   /* Destinations: Current / Historic sections + Key Info */
   .dest-section{margin:6px 0 2px}
-  .dest-section-title{font-family:"Bodoni Moda",serif;font-weight:700;font-size:26px;color:var(--paper-on-pine);margin:0;
+  .dest-section-title{font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;font-size:26px;color:var(--paper-on-pine);margin:0;
     display:flex;align-items:center;gap:12px}
   .dest-section-title::after{content:"";flex:1;height:1px;background:var(--pine-line)}
   .dest-section-sub{color:var(--mut-on-pine);font-size:13px;margin:2px 0 0}
   .dp-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
   @media(max-width:900px){.dp-split{grid-template-columns:1fr}}
   .dp-col{min-width:0}
-  .dp-col-title{font-family:"Bodoni Moda",serif;font-weight:700;font-size:26px;color:var(--paper-on-pine);margin:0}
+  .dp-col-title{font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;font-size:26px;color:var(--paper-on-pine);margin:0}
   .dp-col-sub{color:var(--mut-on-pine);font-size:13px;margin:2px 0 0}
   .dp-historic{margin-top:24px}
   .dest.current{border-left-width:5px;border-left-color:var(--brass);position:relative;margin-top:18px}
@@ -285,7 +287,7 @@
   .head-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
 
   .empty{border:2px dashed var(--pine-line);border-radius:12px;padding:40px 26px;text-align:center;color:var(--mut-on-pine)}
-  .empty h3{color:var(--paper-on-pine);font-family:"Bodoni Moda",serif;font-weight:700;font-size:22px;letter-spacing:.2px;margin:0 0 8px}
+  .empty h3{color:var(--paper-on-pine);font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0 0 8px}
   .empty p{margin:0 auto 18px;max-width:430px}
   .empty .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
@@ -295,8 +297,8 @@
   .scrim.on{display:flex}
   .modal{background:linear-gradient(180deg,var(--paper),var(--paper-2));color:var(--ink);
     border-radius:12px;max-width:580px;width:100%;box-shadow:var(--shadow);padding:26px 26px 22px}
-  .modal h3{font-family:"Hanken Grotesk",system-ui,sans-serif;margin:0 0 4px;font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-.005em}
-  .modal .sub{color:var(--ink-soft);font-size:13px;margin:0 0 18px}
+  .modal h3{font-family:"Hanken Grotesk",system-ui,sans-serif;margin:0 0 4px;font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+  .modal .sub{color:var(--ink-soft);font-size:14px;margin:0 0 18px}
   label.f{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);
     font-weight:700;margin:0 0 5px}
   .field{margin-bottom:14px}
@@ -366,7 +368,7 @@
   .acco{display:flex;align-items:flex-start;gap:14px;border:1px solid var(--rule);border-left:4px solid var(--brass);
     border-radius:10px;padding:14px 16px;background:rgba(196,154,74,.05)}
   .acco-body{flex:1;min-width:0}
-  .acco-title{font-family:"Bodoni Moda",serif;font-weight:700;font-size:16px;color:var(--brass-deep);line-height:1.2}
+  .acco-title{font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;font-size:16px;color:var(--brass-deep);line-height:1.2}
   .acco-name{font-weight:700;color:var(--ink);font-size:14px;margin-top:2px}
   .acco-note{color:var(--ink);font-weight:500;font-size:14px;margin-top:4px;white-space:pre-wrap}
   .acco-edit{flex:0 0 auto}
@@ -555,7 +557,7 @@
 
   /* ---------- gallery ---------- */
   .gsection{margin-bottom:26px}
-  .gsection-title{display:flex;align-items:baseline;gap:10px;font-family:"Bodoni Moda",serif;font-weight:700;
+  .gsection-title{display:flex;align-items:baseline;gap:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;
     font-size:19px;color:var(--paper-on-pine);margin:0 0 12px;border-bottom:1px solid var(--pine-line);padding-bottom:8px}
   .gsection-title .gcount{font-family:"Spline Sans Mono",monospace;font-size:11px;letter-spacing:.1em;
     text-transform:uppercase;color:var(--mut-on-pine);font-weight:500}
@@ -709,7 +711,7 @@
   .team.lost{opacity:.5}
   .team-result{margin-top:auto;padding-top:8px;font-family:"Bodoni Moda",serif;font-size:20px;color:var(--paper-on-pine)}
   .pair-history{margin-top:24px;border-top:1px solid var(--pine-line);padding-top:14px}
-  .hist-trip{font-family:"Bodoni Moda",serif;font-weight:700;color:var(--paper-on-pine);font-size:20px;margin:14px 0 8px}
+  .hist-trip{font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;color:var(--paper-on-pine);font-size:20px;margin:14px 0 8px}
   .cd-row{border:1px solid var(--rule);border-radius:10px;padding:12px 13px;margin-bottom:10px}
   .cd-match{font-weight:600;color:var(--ink);margin-bottom:8px;font-size:14px}
   .cd-match span{color:var(--ink-soft);font-style:italic;margin:0 4px}
@@ -1582,7 +1584,7 @@ function renderClubhouse(){
             <div class="cup">🏆</div>
             <div class="who">
               <div class="lab">Lowest combined team score</div>
-              <div class="name">${tlc?esc(tlc.name):"To be won"}</div>
+              <div class="name">${tlc?esc(tlc.name):"To Be Won"}</div>
               <div class="sub">${tlc
                 ? `${tlc.combined} combined · ${esc(tlc.members.join(' & '))}`
                 : "Set a day's pairings and log scores to crown a team"}</div>
